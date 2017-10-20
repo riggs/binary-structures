@@ -1,0 +1,51 @@
+{
+  "name": "declarative_binary_parser",
+  "version": "0.1.0",
+  "description": "Does what it says on the tin.",
+  "main": "index.js",
+  "directories": {
+    "test": "__test__"
+  },
+  "dependencies": {
+    "typescript": "^2.5.3"
+  },
+  "devDependencies": {
+    "@types/jest": "^21.1.4",
+    "jest": "^21.2.1",
+    "ts-jest": "^21.1.3",
+    "typescript": "^2.5.3"
+  },
+  "scripts": {
+    "tsc": "tsc",
+    "test": "jest",
+    "coverage": "jest --coverage"
+  },
+  "jest": {
+    "globals": {
+      "ts-jest" : {
+        "skipBabel": true
+      }
+    },
+    "transform": {
+      "^.+\\.tsx?$": "<rootDir>/node_modules/ts-jest/preprocessor.js"
+    },
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/riggs/declarative_binary_parser.git"
+  },
+  "author": "Benjamin Riggs (https://github.com/riggs/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/riggs/declarative_binary_parser/issues"
+  },
+  "homepage": "https://github.com/riggs/declarative_binary_parser#readme"
+}

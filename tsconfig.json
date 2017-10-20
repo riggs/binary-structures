@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "module": "es6",
+    "moduleResolution": "classic",
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "outDir": "./dist/",
+    "preserveConstEnums": true,
+    "strictNullChecks": true,
+    "sourceMap": true,
+    "target": "es2017",
+    "typeRoots": ["./typings"]
+  },
+  "include": [
+    "./src/"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
+}
