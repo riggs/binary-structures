@@ -1,5 +1,5 @@
 
-import {uint_pack, int_pack, float_pack, uint_unpack, int_unpack, float_unpack} from './serialization';
+import {uint_pack, int_pack, float_pack, uint_unpack, int_unpack, float_unpack, utf8_pack, utf8_unpack} from '../src/serialization';
 
 describe("uint_pack function", () => {
     test("pack a byte with a byte offset", () => {
@@ -285,5 +285,57 @@ describe("float_unpack function", () => {
         data_view.setUint8(4, (bytes[3] >> (8 - bit_offset)));
         expect(float_unpack({size: 32, byte_offset: 0, bit_offset: bit_offset, data_view: data_view}))
             .toBeCloseTo(value);
+    });
+});
+
+describe("utf8_pack function", () => {
+    test("pack a string with a byte offset", () => {
+        const buffer = new ArrayBuffer(8);
+        const data_view = new DataView(buffer);
+        utf8_pack('💩', {size: 32, byte_offset: 3, bit_offset: 0, data_view});
+        expect(Array.from(new Uint8Array(buffer))).toEqual([0, 0, 0, 240, 159, 146, 169, 0]);
+    });
+
+    test("pack a string with a bit offset (but, really, don't do this in practice)", () => {
+        const value = '🚲';
+        const buffer = new ArrayBuffer(5);
+        const data_view = new DataView(buffer);
+        const bit_offset = 3;
+        utf8_pack(value, {size: 32, byte_offset: 0, bit_offset: bit_offset, data_view: data_view});
+        const tmp_buffer = new ArrayBuffer(5);
+        const tmp_view = new DataView(tmp_buffer);
+        const tmp_value = new DataView(new TextEncoder().encode(value).buffer).getUint32(0, true);
+        tmp_view.setUint8(4, Math.floor(tmp_value * 2**bit_offset / 2**32));
+        tmp_view.setUint32(0, (tmp_value * 2**bit_offset) % 2**32, true);
+        expect(Array.from(new Uint8Array(buffer))).toEqual(Array.from(new Uint8Array(tmp_buffer)));
+    });
+
+    test("pack a string with a too long serialization length throws an error", () => {
+        expect(() => {utf8_pack('🚲', {size: 16, bit_offset: 0, byte_offset: 0, data_view: new DataView(new ArrayBuffer(4))})})
+            .toThrow(/Input string serializes to longer than/)
+    });
+});
+
+describe("utf8_unpack function", () => {
+    test("unpack a string with a byte offset", () => {
+        const buffer = new Uint8Array([0, 0, 0, 240, 159, 146, 169, 0]).buffer;
+        const data_view = new DataView(buffer);
+        expect(utf8_unpack({size: 32, byte_offset: 3, bit_offset: 0, data_view: data_view}))
+            .toEqual('💩');
+    });
+
+    test("unpack a string with a bit offset (but, really, don't do this in practice)", () => {
+        const buffer = new ArrayBuffer(5);
+        const data_view = new DataView(buffer);
+        const tmp_buffer = new TextEncoder().encode('🚲').buffer;
+        const bytes = new Uint8Array(tmp_buffer);
+        const bit_offset = 3;
+        data_view.setUint8(0, (bytes[0] << bit_offset) & 0xFF);
+        data_view.setUint8(1, (bytes[0] >> (8 - bit_offset)) | ((bytes[1] << bit_offset) & 0xFF));
+        data_view.setUint8(2, (bytes[1] >> (8 - bit_offset)) | ((bytes[2] << bit_offset) & 0xFF));
+        data_view.setUint8(3, (bytes[2] >> (8 - bit_offset)) | ((bytes[3] << bit_offset) & 0xFF));
+        data_view.setUint8(4, (bytes[3] >> (8 - bit_offset)));
+        expect(utf8_unpack({size: 32, byte_offset: 0, bit_offset: bit_offset, data_view: data_view}))
+            .toEqual('🚲');
     });
 });

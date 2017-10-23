@@ -10,7 +10,7 @@
     "strictNullChecks": true,
     "sourceMap": true,
     "target": "es2017",
-    "typeRoots": ["./typings"]
+    "typeRoots": []
   },
   "include": [
     "./src/"
