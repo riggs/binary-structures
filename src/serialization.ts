@@ -10,11 +10,18 @@ export function hex_buffer(buffer: ArrayBuffer) {
 const utf8_encoder = new TextEncoder();
 const utf8_decoder = new TextDecoder();
 
-export type Int_Sizes = 8 | 16 | 32;
 
-export type Uint_Sizes = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 16 | 32 | 64;   /* Uint64 special case to handle millisecond epoc time (from Date.now()) */
+export type Bits_Sizes = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export const Bits_Sizes = [1, 2, 3, 4, 5, 6, 7];
+
+export type Uint_Sizes = Bits_Sizes | 8 | 16 | 32 | 64;   /* Uint64 special case to handle millisecond epoc time (from Date.now()) */
+export const Uint_Sizes = Bits_Sizes.concat([8, 16, 32, 64]);
+
+export type Int_Sizes = 8 | 16 | 32;
+export const Int_Sizes = [8, 16, 32];
 
 export type Float_Sizes = 32 | 64;
+export const Float_Sizes = [32, 64];
 
 interface Serialization_Options<Sizes> {
     size: Sizes,
@@ -25,14 +32,14 @@ interface Serialization_Options<Sizes> {
 }
 
 export interface Serializer<Type, Sizes> {
-    (value: Type, options: Serialization_Options<Sizes>): void;
+    (value: Type, options: Serialization_Options<Sizes>): number;
 }
 
 export interface Deserializer<Type, Sizes> {
     (options: Serialization_Options<Sizes>): Type;
 }
 
-const write_bit_shift: ((packer: Serializer<any, number>, value: any, options: Serialization_Options<number>) => void) =
+const write_bit_shift: ((packer: Serializer<any, number>, value: any, options: Serialization_Options<number>) => number) =
         (packer, value, {bit_offset, size, data_view, byte_offset, little_endian}) => {
     /*
     bit_offset = 5
@@ -42,7 +49,7 @@ const write_bit_shift: ((packer: Serializer<any, number>, value: any, options: S
     new_buffer = 000xxxxx xxx11111
      */
     const bytes = new Uint8Array(Math.ceil(size / 8));
-    packer(value, {size: size, bit_offset: 0, byte_offset: 0, data_view: new DataView(bytes.buffer), little_endian});
+    const bit_length = packer(value, {size: size, bit_offset: 0, byte_offset: 0, data_view: new DataView(bytes.buffer), little_endian});
     let overlap = data_view.getUint8(byte_offset) & (0xFF >> (8 - bit_offset));
     for (const [index, byte] of bytes.entries()) {
         data_view.setUint8(byte_offset + index, ((byte << bit_offset) & 0xFF) | overlap);
@@ -51,6 +58,7 @@ const write_bit_shift: ((packer: Serializer<any, number>, value: any, options: S
     if (bit_offset + size > 8) {
         data_view.setUint8(byte_offset + Math.ceil(size / 8), overlap);
     }
+    return bit_length;
 };
 
 const read_bit_shift: ((parser: Deserializer<any, number>, options: Serialization_Options<number>) => any) =
@@ -107,10 +115,11 @@ export const uint_pack: Serializer<number, Uint_Sizes> = (value, {bit_offset, si
                 data_view.setUint32(byte_offset + 4, high_byte, little_endian);
                 break;
             default:    /* Unreachable code in TypeScript */
-                throw new Error(`Invalid bit size: ${size}`);
+                throw new Error(`Invalid size: ${size}`);
         }
+        return size;
     } else {
-        write_bit_shift(uint_pack, value, {bit_offset, size, data_view, byte_offset, little_endian});
+        return write_bit_shift(uint_pack, value, {bit_offset, size, data_view, byte_offset, little_endian});
     }
 };
 
@@ -144,7 +153,7 @@ export const uint_parse: Deserializer<number, Uint_Sizes> = ({bit_offset, size, 
                 }
                 return value;
             default:    /* Unreachable code in TypeScript, but compiler error if absent */
-                throw new Error(`Invalid bit size: ${size}`);
+                throw new Error(`Invalid size: ${size}`);
         }
     } else {
         return read_bit_shift(uint_parse, {bit_offset, size, data_view, byte_offset, little_endian});
@@ -169,10 +178,11 @@ export const int_pack: Serializer<number, Int_Sizes> = (value, {bit_offset, size
                 data_view.setUint32(byte_offset, value, little_endian);
                 break;
             default:    /* Unreachable code in TypeScript */
-                throw new Error(`Invalid bit size: ${size}`);
+                throw new Error(`Invalid size: ${size}`);
         }
+        return size;
     } else {
-        write_bit_shift(int_pack, value, {bit_offset, size, data_view, byte_offset, little_endian});
+        return write_bit_shift(int_pack, value, {bit_offset, size, data_view, byte_offset, little_endian});
     }
 };
 
@@ -186,7 +196,7 @@ export const int_parse: Deserializer<number, Int_Sizes> = ({bit_offset, size, da
             case 32:
                 return data_view.getInt32(byte_offset, little_endian);
             default:    /* Unreachable code in TypeScript, but compiler error if absent */
-                throw new Error(`Invalid bit size: ${size}`);
+                throw new Error(`Invalid size: ${size}`);
         }
     } else {
         return read_bit_shift(int_parse, {bit_offset, size, data_view, byte_offset, little_endian});
@@ -204,10 +214,11 @@ export const float_pack: Serializer<number, Float_Sizes> = (value, {bit_offset, 
                 data_view.setFloat64(byte_offset, value, little_endian);
                 break;
             default:    /* Unreachable code in TypeScript */
-                throw new Error(`Invalid bit size: ${size}`);
+                throw new Error(`Invalid size: ${size}`);
         }
+        return size;
     } else {
-        write_bit_shift(float_pack, value, {bit_offset, size, data_view, byte_offset, little_endian});
+        return write_bit_shift(float_pack, value, {bit_offset, size, data_view, byte_offset, little_endian});
     }
 };
 
@@ -219,7 +230,7 @@ export const float_parse: Deserializer<number, Float_Sizes> = ({bit_offset, size
             case 64:
                 return data_view.getFloat64(byte_offset, little_endian);
             default:    /* Unreachable code in TypeScript, but compiler error if absent */
-                throw new Error(`Invalid bit size: ${size}`);
+                throw new Error(`Invalid size: ${size}`);
         }
     } else {
         return read_bit_shift(float_parse, {bit_offset, size, data_view, byte_offset, little_endian});
@@ -229,14 +240,19 @@ export const float_parse: Deserializer<number, Float_Sizes> = ({bit_offset, size
 export const utf8_pack: Serializer<string, number> = (value, {bit_offset, size, data_view, byte_offset}) => {
     if (bit_offset === 0) {
         const byte_array = utf8_encoder.encode(value);
-        if (byte_array.byteLength > size / 8) {
+        const byte_length = byte_array.byteLength;
+        if (size > 0 && byte_length > size / 8) {
             throw new Error(`Input string serializes to longer than ${size / 8} bytes:\n${value}`);
+        }
+        if (byte_length + byte_offset > data_view.byteLength) {
+            throw new Error(`Insufficient space in ArrayBuffer to store length ${byte_length} string:\n${value}`);
         }
         for (const [index, byte] of byte_array.entries()) {
             data_view.setUint8(byte_offset + index, byte);
         }
+        return byte_length * 8;
     } else {
-        write_bit_shift(utf8_pack, value, {bit_offset, size, data_view, byte_offset});
+        return write_bit_shift(utf8_pack, value, {bit_offset, size, data_view, byte_offset});
     }
 };
 

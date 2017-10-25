@@ -3,16 +3,16 @@ Does what it says on the tin.
 
 ## Example
 ```
-let report = ByteObject({
-    Endian: 'little',
-    size: Bits(2),
-    type: Bits(2, {decode: (value, context) => {
+let report = new ByteMap()
+    .set('Endian', 'little')
+    .set('size', Bits(2))
+    .set('type', Bits(2, {decode: (value, context) => {
         if (value === 3) {
             throw new Error(`Reserved value ${value} for ${context._identifier}`)
         }
         return value;
-    }}),
-    tag: Bits(4)
+    }}))
+    .set('tag', Bits(4))
 })
 ```
 
