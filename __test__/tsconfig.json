@@ -5,9 +5,12 @@
     "moduleResolution": "node",
     "noImplicitAny": true,
     "noImplicitThis": true,
-    "outDir": "./dist/",
     "preserveConstEnums": true,
     "strictNullChecks": true,
     "target": "es2017"
-  }
+  },
+  "include": [
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }

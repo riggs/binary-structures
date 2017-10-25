@@ -7,14 +7,14 @@ import {
     int_pack,
     float_pack,
     Deserializer,
-    uint_unpack,
-    int_unpack,
-    float_unpack,
+    uint_parse,
+    int_parse,
+    float_parse,
     utf8_pack,
-    utf8_unpack
+    utf8_parse
 } from './serialization';
 
-/** These functions used internally to the library to pack/unpack ArrayBuffers. */
+/** These functions used internally to the library to pack/parse ArrayBuffers. */
 interface Context {
 
 }
@@ -32,7 +32,7 @@ interface Transcoder_Options<T> {
 
 interface Struct<Type, Sizes> extends Transcoder_Options<Type> {
     pack: Serializer<Type, Sizes>,
-    unpack: Deserializer<Type, Sizes>,
+    parse: Deserializer<Type, Sizes>,
 }
 
 // interface ByteArray extends Transcoder_Options {
@@ -44,17 +44,17 @@ interface Struct<Type, Sizes> extends Transcoder_Options<Type> {
 // }
 
 export const Uint: ((options: Transcoder_Options<number>) => Struct<number, Uint_Sizes>) = ({encode, decode, little_endian}) => {
-    return {encode, decode, little_endian, pack: uint_pack, unpack: uint_unpack}
+    return {encode, decode, little_endian, pack: uint_pack, parse: uint_parse}
 };
 
 export const Int: ((options: Transcoder_Options<number>) => Struct<number, Int_Sizes>) = ({encode, decode, little_endian}) => {
-    return {encode, decode, little_endian, pack: int_pack, unpack: int_unpack}
+    return {encode, decode, little_endian, pack: int_pack, parse: int_parse}
 };
 
 export const Float: ((options: Transcoder_Options<number>) => Struct<number, Float_Sizes>) = ({encode, decode, little_endian}) => {
-    return {encode, decode, little_endian, pack: float_pack, unpack: float_unpack}
+    return {encode, decode, little_endian, pack: float_pack, parse: float_parse}
 };
 
 export const Utf8: ((options: Transcoder_Options<string>) => Struct<string, number>) = ({encode, decode}) => {
-    return {encode, decode, pack: utf8_pack, unpack: utf8_unpack}
+    return {encode, decode, pack: utf8_pack, parse: utf8_parse}
 };

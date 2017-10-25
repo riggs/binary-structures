@@ -1,5 +1,5 @@
 
-import {uint_pack, int_pack, float_pack, uint_unpack, int_unpack, float_unpack, utf8_pack, utf8_unpack} from '../src/serialization';
+import {uint_pack, int_pack, float_pack, uint_parse, int_parse, float_parse, utf8_pack, utf8_parse} from '../src/serialization';
 
 describe("uint_pack function", () => {
     test("pack a byte with a byte offset", () => {
@@ -142,40 +142,40 @@ describe("float_pack function", () => {
     });
 });
 
-describe("uint_unpack function", () => {
-    test("unpack a byte with a byte offset", () => {
+describe("uint_parse function", () => {
+    test("parse a byte with a byte offset", () => {
         const bytes = new Uint8Array([0, 1, 42, 3]);
-        expect(uint_unpack({size: 8, byte_offset: 2, bit_offset: 0, data_view: new DataView(bytes.buffer)}))
+        expect(uint_parse({size: 8, byte_offset: 2, bit_offset: 0, data_view: new DataView(bytes.buffer)}))
             .toEqual(42);
     });
 
-    test("unpack a uint16 little endian", () => {
+    test("parse a uint16 little endian", () => {
         const buffer = new ArrayBuffer(2);
         const data_view = new DataView(buffer);
         data_view.setUint16(0,0b0001111111000000, true);
-        expect(uint_unpack({size: 16, byte_offset: 0, bit_offset: 0, data_view: data_view, little_endian: true}))
+        expect(uint_parse({size: 16, byte_offset: 0, bit_offset: 0, data_view: data_view, little_endian: true}))
             .toEqual(8128);
     });
 
-    test("unpack a uint32 big endian", () => {
+    test("parse a uint32 big endian", () => {
         const buffer = new ArrayBuffer(4);
         const data_view = new DataView(buffer);
         data_view.setUint32(0, 0b00000001111111111111000000000000);
-        expect(uint_unpack({size: 32, byte_offset: 0, bit_offset: 0, data_view: data_view, little_endian: undefined}))
+        expect(uint_parse({size: 32, byte_offset: 0, bit_offset: 0, data_view: data_view, little_endian: undefined}))
             .toEqual(33550336);
     });
 
-    test("unpack a uint64 little endian", () => {
+    test("parse a uint64 little endian", () => {
         const buffer = new ArrayBuffer(8);
         const data_view = new DataView(buffer);
         const now = Date.now();
         data_view.setUint32(0, now % 2**32, true);
         data_view.setUint32(4, Math.floor(now / 2**32), true);
-        expect(uint_unpack({size: 64, byte_offset: 0, bit_offset: 0, data_view: data_view, little_endian: true}))
+        expect(uint_parse({size: 64, byte_offset: 0, bit_offset: 0, data_view: data_view, little_endian: true}))
             .toEqual(now);
     });
 
-    test("unpack a uint16 big endian with a bit offset", () => {
+    test("parse a uint16 big endian with a bit offset", () => {
         const buffer = new ArrayBuffer(2+1);
         const data_view = new DataView(buffer);
         const value = 0xAF0F;
@@ -183,66 +183,66 @@ describe("uint_unpack function", () => {
         data_view.setUint8(0, (0xAF << bit_offset) & 0xFF);
         data_view.setUint8(1, (0xAF >> (8 - bit_offset)) | ((0x0F << bit_offset) & 0xFF));
         data_view.setUint8(2, (0x0F >> (8 - bit_offset)));
-        expect(uint_unpack({size: 16, byte_offset: 0, bit_offset: bit_offset, data_view: data_view}))
+        expect(uint_parse({size: 16, byte_offset: 0, bit_offset: bit_offset, data_view: data_view}))
             .toEqual(value);
     });
 
-    test("unpack a uint2 with a bit shift without byte boundary", () => {
+    test("parse a uint2 with a bit shift without byte boundary", () => {
         const buffer = new ArrayBuffer(1);
         const data_view = new DataView(buffer);
         data_view.setUint8(0, 0xAA);
-        expect(uint_unpack({size: 2, byte_offset: 0, bit_offset: 5, data_view: data_view}))
+        expect(uint_parse({size: 2, byte_offset: 0, bit_offset: 5, data_view: data_view}))
             .toEqual(1);
-        expect(uint_unpack({size: 2, byte_offset: 0, bit_offset: 4, data_view: data_view}))
+        expect(uint_parse({size: 2, byte_offset: 0, bit_offset: 4, data_view: data_view}))
             .toEqual(2);
     });
 
-    test("unpack a uint3 with a bit shift with a byte boundary", () => {
+    test("parse a uint3 with a bit shift with a byte boundary", () => {
         const buffer = new ArrayBuffer(2);
         const data_view = new DataView(buffer);
         data_view.setUint16(0, 0x01C0, true);
-        expect(uint_unpack({size: 3, byte_offset: 0, bit_offset: 6, data_view: data_view}))
+        expect(uint_parse({size: 3, byte_offset: 0, bit_offset: 6, data_view: data_view}))
             .toEqual(7);
-        expect(uint_unpack({size: 3, byte_offset: 0, bit_offset: 5, data_view: data_view}))
+        expect(uint_parse({size: 3, byte_offset: 0, bit_offset: 5, data_view: data_view}))
             .toEqual(6);
-        expect(uint_unpack({size: 3, byte_offset: 0, bit_offset: 4, data_view: data_view}))
+        expect(uint_parse({size: 3, byte_offset: 0, bit_offset: 4, data_view: data_view}))
             .toEqual(4);
-        expect(uint_unpack({size: 3, byte_offset: 0, bit_offset: 7, data_view: data_view}))
+        expect(uint_parse({size: 3, byte_offset: 0, bit_offset: 7, data_view: data_view}))
             .toEqual(3);
     });
 
-    test("unpack a uint64 with an unsafe integer throws an error", () => {
+    test("parse a uint64 with an unsafe integer throws an error", () => {
         const buffer = new Uint16Array([0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF]).buffer;
         const data_view = new DataView(buffer);
-        expect(() => {uint_unpack({size: 64, byte_offset: 0, bit_offset: 0, data_view: data_view})})
+        expect(() => {uint_parse({size: 64, byte_offset: 0, bit_offset: 0, data_view: data_view})})
             .toThrow(/0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF/)
     })
 });
 
-describe("int_unpack function", () => {
-    test("unpack a byte with a byte offset", () => {
+describe("int_parse function", () => {
+    test("parse a byte with a byte offset", () => {
         const bytes = new Int8Array([0, 1, -42, 3]);
-        expect(int_unpack({size: 8, byte_offset: 2, bit_offset: 0, data_view: new DataView(bytes.buffer)}))
+        expect(int_parse({size: 8, byte_offset: 2, bit_offset: 0, data_view: new DataView(bytes.buffer)}))
             .toEqual(-42);
     });
 
-    test("unpack a int16 little endian", () => {
+    test("parse a int16 little endian", () => {
         const buffer = new ArrayBuffer(2);
         const data_view = new DataView(buffer);
         data_view.setUint16(0,0b0001111111000000, true);
-        expect(int_unpack({size: 16, byte_offset: 0, bit_offset: 0, data_view: data_view, little_endian: true}))
+        expect(int_parse({size: 16, byte_offset: 0, bit_offset: 0, data_view: data_view, little_endian: true}))
             .toEqual(8128);
     });
 
-    test("unpack a int32 big endian", () => {
+    test("parse a int32 big endian", () => {
         const buffer = new ArrayBuffer(4);
         const data_view = new DataView(buffer);
         data_view.setInt32(0, -33550336);
-        expect(int_unpack({size: 32, byte_offset: 0, bit_offset: 0, data_view: data_view, little_endian: undefined}))
+        expect(int_parse({size: 32, byte_offset: 0, bit_offset: 0, data_view: data_view, little_endian: undefined}))
             .toEqual(-33550336);
     });
 
-    test("unpack a int16 big endian with a bit offset", () => {
+    test("parse a int16 big endian with a bit offset", () => {
         const buffer = new ArrayBuffer(2+1);
         const data_view = new DataView(buffer);
         const value = 0xAF0F;
@@ -250,27 +250,27 @@ describe("int_unpack function", () => {
         data_view.setUint8(0, (0xAF << bit_offset) & 0xFF);
         data_view.setUint8(1, (0xAF >> (8 - bit_offset)) | ((0x0F << bit_offset) & 0xFF));
         data_view.setUint8(2, (0x0F >> (8 - bit_offset)));
-        expect(int_unpack({size: 16, byte_offset: 0, bit_offset: bit_offset, data_view: data_view}))
+        expect(int_parse({size: 16, byte_offset: 0, bit_offset: bit_offset, data_view: data_view}))
             .toEqual(-(2**16 - value));
     });
 });
 
-describe("float_unpack function", () => {
-    test("unpack a float64 big endian", () => {
+describe("float_parse function", () => {
+    test("parse a float64 big endian", () => {
         const buffer = new ArrayBuffer(8);
         const data_view = new DataView(buffer);
         data_view.setFloat64(0, 8128.8128);
-        expect(float_unpack({size: 64, byte_offset: 0, bit_offset: 0, data_view: data_view}))
+        expect(float_parse({size: 64, byte_offset: 0, bit_offset: 0, data_view: data_view}))
             .toBeCloseTo(8128.8128);
     });
 
-    test("unpack a float32 little endian with a byte offset", () => {
+    test("parse a float32 little endian with a byte offset", () => {
         const bytes = new Float32Array([0.1, 0.2, -42.42, 0.4]);
-        expect(float_unpack({size: 32, byte_offset: 8, bit_offset: 0, data_view: new DataView(bytes.buffer), little_endian: true}))
+        expect(float_parse({size: 32, byte_offset: 8, bit_offset: 0, data_view: new DataView(bytes.buffer), little_endian: true}))
             .toBeCloseTo(-42.42);
     });
 
-    test("unpack a float32 big endian with a bit offset", () => {
+    test("parse a float32 big endian with a bit offset", () => {
         const buffer = new ArrayBuffer(4+1);
         const data_view = new DataView(buffer);
         const value = -41.41;
@@ -283,7 +283,7 @@ describe("float_unpack function", () => {
         data_view.setUint8(2, (bytes[1] >> (8 - bit_offset)) | ((bytes[2] << bit_offset) & 0xFF));
         data_view.setUint8(3, (bytes[2] >> (8 - bit_offset)) | ((bytes[3] << bit_offset) & 0xFF));
         data_view.setUint8(4, (bytes[3] >> (8 - bit_offset)));
-        expect(float_unpack({size: 32, byte_offset: 0, bit_offset: bit_offset, data_view: data_view}))
+        expect(float_parse({size: 32, byte_offset: 0, bit_offset: bit_offset, data_view: data_view}))
             .toBeCloseTo(value);
     });
 });
@@ -316,15 +316,15 @@ describe("utf8_pack function", () => {
     });
 });
 
-describe("utf8_unpack function", () => {
-    test("unpack a string with a byte offset", () => {
+describe("utf8_parse function", () => {
+    test("parse a string with a byte offset", () => {
         const buffer = new Uint8Array([0, 0, 0, 240, 159, 146, 169, 0]).buffer;
         const data_view = new DataView(buffer);
-        expect(utf8_unpack({size: 32, byte_offset: 3, bit_offset: 0, data_view: data_view}))
+        expect(utf8_parse({size: 32, byte_offset: 3, bit_offset: 0, data_view: data_view}))
             .toEqual('💩');
     });
 
-    test("unpack a string with a bit offset (but, really, don't do this in practice)", () => {
+    test("parse a string with a bit offset (but, really, don't do this in practice)", () => {
         const buffer = new ArrayBuffer(5);
         const data_view = new DataView(buffer);
         const tmp_buffer = new TextEncoder().encode('🚲').buffer;
@@ -335,7 +335,7 @@ describe("utf8_unpack function", () => {
         data_view.setUint8(2, (bytes[1] >> (8 - bit_offset)) | ((bytes[2] << bit_offset) & 0xFF));
         data_view.setUint8(3, (bytes[2] >> (8 - bit_offset)) | ((bytes[3] << bit_offset) & 0xFF));
         data_view.setUint8(4, (bytes[3] >> (8 - bit_offset)));
-        expect(utf8_unpack({size: 32, byte_offset: 0, bit_offset: bit_offset, data_view: data_view}))
+        expect(utf8_parse({size: 32, byte_offset: 0, bit_offset: bit_offset, data_view: data_view}))
             .toEqual('🚲');
     });
 });

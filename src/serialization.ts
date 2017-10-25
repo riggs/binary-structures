@@ -53,8 +53,8 @@ const write_bit_shift: ((packer: Serializer<any, number>, value: any, options: S
     }
 };
 
-const read_bit_shift: ((unpacker: Deserializer<any, number>, options: Serialization_Options<number>) => any) =
-    (unpacker, {bit_offset, size, data_view, byte_offset, little_endian}) => {
+const read_bit_shift: ((parser: Deserializer<any, number>, options: Serialization_Options<number>) => any) =
+    (parser, {bit_offset, size, data_view, byte_offset, little_endian}) => {
         const bytes = new Uint8Array(Math.ceil(size / 8));
         let byte = data_view.getUint8(byte_offset);
         if (bit_offset + size > 8) {
@@ -66,7 +66,7 @@ const read_bit_shift: ((unpacker: Deserializer<any, number>, options: Serializat
         } else {
             bytes[0] = byte >> bit_offset & (0xFF >> (8 - size));
         }
-        return unpacker({size: size, bit_offset: 0, byte_offset: 0, data_view: new DataView(bytes.buffer), little_endian});
+        return parser({size: size, bit_offset: 0, byte_offset: 0, data_view: new DataView(bytes.buffer), little_endian});
     };
 
 export const uint_pack: Serializer<number, Uint_Sizes> = (value, {bit_offset, size, data_view, byte_offset, little_endian}) => {
@@ -114,7 +114,7 @@ export const uint_pack: Serializer<number, Uint_Sizes> = (value, {bit_offset, si
     }
 };
 
-export const uint_unpack: Deserializer<number, Uint_Sizes> = ({bit_offset, size, data_view, byte_offset, little_endian}) => {
+export const uint_parse: Deserializer<number, Uint_Sizes> = ({bit_offset, size, data_view, byte_offset, little_endian}) => {
     if (bit_offset === 0) {
         switch (size) {
             case 1:
@@ -147,7 +147,7 @@ export const uint_unpack: Deserializer<number, Uint_Sizes> = ({bit_offset, size,
                 throw new Error(`Invalid bit size: ${size}`);
         }
     } else {
-        return read_bit_shift(uint_unpack, {bit_offset, size, data_view, byte_offset, little_endian});
+        return read_bit_shift(uint_parse, {bit_offset, size, data_view, byte_offset, little_endian});
     }
 };
 
@@ -176,7 +176,7 @@ export const int_pack: Serializer<number, Int_Sizes> = (value, {bit_offset, size
     }
 };
 
-export const int_unpack: Deserializer<number, Int_Sizes> = ({bit_offset, size, data_view, byte_offset, little_endian}) => {
+export const int_parse: Deserializer<number, Int_Sizes> = ({bit_offset, size, data_view, byte_offset, little_endian}) => {
     if (bit_offset === 0) {
         switch (size) {
             case 8:
@@ -189,7 +189,7 @@ export const int_unpack: Deserializer<number, Int_Sizes> = ({bit_offset, size, d
                 throw new Error(`Invalid bit size: ${size}`);
         }
     } else {
-        return read_bit_shift(int_unpack, {bit_offset, size, data_view, byte_offset, little_endian});
+        return read_bit_shift(int_parse, {bit_offset, size, data_view, byte_offset, little_endian});
     }
 };
 
@@ -211,7 +211,7 @@ export const float_pack: Serializer<number, Float_Sizes> = (value, {bit_offset, 
     }
 };
 
-export const float_unpack: Deserializer<number, Float_Sizes> = ({bit_offset, size, data_view, byte_offset, little_endian}) => {
+export const float_parse: Deserializer<number, Float_Sizes> = ({bit_offset, size, data_view, byte_offset, little_endian}) => {
     if (bit_offset === 0) {
         switch (size) {
             case 32:
@@ -222,7 +222,7 @@ export const float_unpack: Deserializer<number, Float_Sizes> = ({bit_offset, siz
                 throw new Error(`Invalid bit size: ${size}`);
         }
     } else {
-        return read_bit_shift(float_unpack, {bit_offset, size, data_view, byte_offset, little_endian});
+        return read_bit_shift(float_parse, {bit_offset, size, data_view, byte_offset, little_endian});
     }
 };
 
@@ -240,10 +240,10 @@ export const utf8_pack: Serializer<string, number> = (value, {bit_offset, size, 
     }
 };
 
-export const utf8_unpack: Deserializer<string, number> = ({bit_offset, size, data_view, byte_offset}) => {
+export const utf8_parse: Deserializer<string, number> = ({bit_offset, size, data_view, byte_offset}) => {
     if (bit_offset === 0) {
         return utf8_decoder.decode(new DataView(data_view.buffer, byte_offset, size / 8));
     } else {
-        return read_bit_shift(utf8_unpack, {bit_offset, size, data_view, byte_offset});
+        return read_bit_shift(utf8_parse, {bit_offset, size, data_view, byte_offset});
     }
 };
