@@ -18,6 +18,6 @@ let report = new ByteMap()
 
 
 ### API
-##### Bits(count[, assertion, transform, endianness])
+##### Bits(size[, {encode?, decode?}])
 
 

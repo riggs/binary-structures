@@ -23,11 +23,13 @@ export const Int_Sizes = [8, 16, 32];
 export type Float_Sizes = 32 | 64;
 export const Float_Sizes = [32, 64];
 
+export type bit_offset = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
 interface Serialization_Options<Sizes> {
     size: Sizes,
     byte_offset: number,
     data_view: DataView,
-    bit_offset: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
+    bit_offset: bit_offset,
     little_endian?: boolean | undefined
 }
 

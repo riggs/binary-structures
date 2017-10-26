@@ -1,6 +1,10 @@
 
-import {bits, uint, int, float, utf8, embed} from '../src/transcode';
+import {bits, uint, int, float, utf8, embed, Byte_Array, Byte_Map} from '../src/transcode';
 
-test("no-op so that Jest doesn't complain about an empty file", () => {
-    expect(1).toEqual(1);
+describe("Byte_Array", () => {
+    test("simplest case", () => {
+        const array = new Uint8Array([42]);
+        const byte_array = new Byte_Array({}, uint(8));
+        expect(byte_array.parse(array.buffer, {})).toEqual([42])
+    });
 });
