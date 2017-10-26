@@ -10,7 +10,11 @@
     "target": "es2017"
   },
   "include": [
+    "../src/improved_map.ts",
     "**/*.test.ts",
     "**/*.spec.ts"
+  ],
+  "exclude": [
+    "improved_map.test.ts"
   ]
 }

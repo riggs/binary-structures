@@ -151,3 +151,7 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+### ts-jest artefacts
+__test__/**/*.js
+### ts-jest + WebStorm artefacts
+src/**/*.js

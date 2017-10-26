@@ -32,12 +32,3 @@ interface Window {
     readonly TextEncoder: Text_Encoder_Constructor;
     readonly TextDecoder: Text_Decoder_Constructor;
 }
-
-interface MapConstructor {
-    assign(target: Map<any, any>, ...sources: Array<Map<any, any> | Array<[any, any]>>): Map<any, any>
-}
-
-interface Map<K, V> {
-    update(...sources: Array<Map<any, any> | Array<[any, any]>>): Map<K, V>
-    asObject(): any
-}
