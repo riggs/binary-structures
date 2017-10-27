@@ -30,7 +30,7 @@ interface Serialization_Options<Sizes> {
     byte_offset: number,
     data_view: DataView,
     bit_offset: bit_offset,
-    little_endian?: boolean | undefined
+    little_endian?: boolean
 }
 
 export interface Serializer<Type, Sizes> {

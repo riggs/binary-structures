@@ -5,6 +5,6 @@ describe("Byte_Array", () => {
     test("simplest case", () => {
         const array = new Uint8Array([42]);
         const byte_array = new Byte_Array({}, uint(8));
-        expect(byte_array.parse(array.buffer, {})).toEqual([42])
+        expect(byte_array.parse(array.buffer, {})).toEqual({data: [42], parsed_size: 8})
     });
 });
