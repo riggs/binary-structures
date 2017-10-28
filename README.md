@@ -4,7 +4,6 @@ Does what it says on the tin.
 ## Example
 ```
 let report = new ByteMap()
-    .set('Endian', 'little')
     .set('size', Bits(2))
     .set('type', Bits(2, {decode: (value, context) => {
         if (value === 3) {
@@ -18,6 +17,6 @@ let report = new ByteMap()
 
 
 ### API
-##### Bits(size[, {encode?, decode?}])
+##### Bits(size\[, {encode?, decode?}])
 
-
+##### Uint(size\[, {encode?, decode?, little_endian?}])
