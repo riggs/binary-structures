@@ -3,7 +3,7 @@ Does what it says on the tin.
 
 ## Example
 ```
-let report = new ByteMap()
+let report = new Byte_Map({little_endian: true})
     .set('size', Bits(2))
     .set('type', Bits(2, {decode: (value, context) => {
         if (value === 3) {

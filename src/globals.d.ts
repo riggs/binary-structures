@@ -32,3 +32,8 @@ interface Window {
     readonly TextEncoder: Text_Encoder_Constructor;
     readonly TextDecoder: Text_Decoder_Constructor;
 }
+
+/* Pushing this to the global object because of a deficiency in typescript. */
+interface SymbolConstructor {
+    Parent: symbol;
+}
