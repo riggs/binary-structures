@@ -23,9 +23,8 @@ type Primatives = number | string;
 /* Need to hang Parent off the global Symbol because of Typescript deficiency */
 Symbol.Parent = Symbol.for("Parent");
 
-interface Context_Object {
+interface Context_Object extends Map<string, any>{
     [Symbol.Parent]?: Context;
-    [arg: string]: any;
 }
 
 interface Context_Array extends Array<any> {
@@ -40,6 +39,16 @@ interface Transcoders<T> {
     decode?: (data: T, context?: Context) => any;
     little_endian?: boolean;
 }
+
+export const inspect_transcoder = (data: any, context?: Context) => {
+    console.log(context);
+    return data
+};
+
+export const inspect = {
+    encode: inspect_transcoder,
+    decode: inspect_transcoder,
+};
 
 interface Common_Options {
     byte_offset?: number;
@@ -91,7 +100,7 @@ const bakery /* factory that makes Bytes */ = (serializer: Serializer<Primatives
             if (encode !== undefined) {
                 data = encode(data, context);
             }
-            const size = serializer(data, {bits, data_view, byte_offset, little_endian}) / 8;
+            const size = (serializer(data, {bits, data_view, byte_offset, little_endian}) / 8);
             return {size, buffer: data_view.buffer};
         };
 
@@ -121,15 +130,23 @@ export const Utf8: Bytes<string> = bakery(utf8_pack, utf8_parse, (s) => s % 8 ==
 /* A unique marker used to indicate the referenced Structure should be embedded into the parent */
 
 let embed = new Map();
-export const Embed: ((thing: Struct) => Struct) = (thing) => {
-    const symbol = Symbol();
+export const Embed: ((thing: Byte_Array_Class | Byte_Map_Class) => Struct) = (thing) => {
+    const parse_symbol = Symbol();
+
+    /* Don't use the default decoder if the thing is embedded */
+    console.log(thing.decode);
+    console.log(Object.getPrototypeOf(thing));
+    if (thing.decode === default_decoder) {
+        thing.decode = undefined;
+    }
 
     const parse: Parser = (options) => {
         const {size, data} = thing.parse(options);
-        embed.set(symbol, data);
-        return {size, data: symbol};
+        embed.set(parse_symbol, data);
+        return {size, data: parse_symbol};
     };
 
+    // TODO: FIXME Pack also needs special handling.
     return {pack: thing.pack, parse};
 };
 
@@ -150,18 +167,22 @@ export const Branch = (choose: Chooser, choices: Choices): Struct => {
     return {parse, pack};
 };
 
+/* Declared in this namespace because Object.getPrototypeOf(thing).default_decoder returns undefined. */
+const default_decoder = (data: any[] | Map<string, any>) => {
+    if (data instanceof Map) {
+        return data.toObject();
+    }
+    return Array.from(data);
+};
+
 interface Byte_Array_Class extends Struct, Transcoders<any[]>, Array<Struct> {}
 
 class Byte_Array_Class extends Array<Struct> {
-    constructor({encode, decode = Byte_Array_Class.default_decoder, little_endian}: Transcoders<any[]>, ...elements: Struct[]) {
+    constructor({encode, decode = default_decoder, little_endian}: Transcoders<any[]>, ...elements: Struct[]) {
         super(...elements);
         this.encode = encode;
         this.decode = decode;
         this.little_endian = little_endian;
-    }
-
-    static default_decoder(array: any[], context: Context) {
-        return Array.from(array);
     }
 
     parse({data_view, byte_offset = 0, little_endian = this.little_endian, context}: Parse_Options) {
@@ -170,10 +191,14 @@ class Byte_Array_Class extends Array<Struct> {
         array[Symbol.Parent] = context;
 
         for (const item of this) {
-            const {data, size} = item.parse({data_view, byte_offset: byte_offset + offset, little_endian, context: array});
+            let {data, size} = item.parse({data_view, byte_offset: byte_offset + offset, little_endian, context: array});
             offset += size;
             if (typeof data === 'symbol') {
-                array.push(...embed.pop(data));
+                data = embed.pop(data);
+                if (!(data instanceof Array)) {
+                    throw new Error(`Unable to Embed ${data} into ${this}`)
+                }
+                array.push(...data);
             } else {
                 array.push(data);
             }
@@ -211,7 +236,7 @@ export const Byte_Array = (...elements: Array<Struct | Transcoders<any[]>>): Byt
 
 type Repeats = number | ((context?: Context) => number);
 
-export class Repeat_Class extends Byte_Array_Class {
+class Repeat_Class extends Byte_Array_Class {
     repeat: Repeats;
     constructor(repeat: Repeats, options: Transcoders<any[]>, ...elements: Struct[]) {
         super(options, ...elements);
@@ -253,19 +278,35 @@ export const Repeat = (repeat: Repeats, ...elements: Array<Struct | Transcoders<
 interface Byte_Map_Class extends Struct, Transcoders<Map<string, any>>, Map<string, Struct> {}
 
 class Byte_Map_Class extends Map<string, Struct> {
-    constructor({encode, decode = Byte_Map_Class.default_decoder, little_endian}: Transcoders<Map<string, any>>, iterable?: Array<[string, Struct]>) {
+    constructor({encode, decode = default_decoder, little_endian}: Transcoders<Map<string, any>>, iterable?: Array<[string, Struct]>) {
         super(iterable);
         this.encode = encode;
         this.decode = decode;
         this.little_endian = little_endian;
     }
 
-    static default_decoder(map: Map<string, any>, context: Context) {
-        return map.toObject();
-    }
+    parse({data_view, byte_offset = 0, little_endian = this.little_endian, context}: Parse_Options) {
+        let offset = 0;
+        let map: Context_Object = new Map();
+        map[Symbol.Parent] = context;
 
-    parse({data_view, byte_offset = 0, little_endian = this.little_endian, context}: Parse_Options): Parsed<any> {
-        return {data: this.decode!(new Map(), this), size: data_view.buffer.byteLength};  // FIXME: Placeholder for Type checking.
+        for (const [key, value] of this) {
+            let {data, size} = value.parse({data_view, byte_offset: byte_offset + offset, little_endian, context: map});
+            offset += size;
+            if (typeof data === 'symbol') {
+                data = embed.pop(data);
+                console.log(data);
+                map.update(data);
+            } else {
+                map.set(key, data);
+            }
+        }
+
+        if (this.decode !== undefined) {
+            map = this.decode(map, context);
+        }
+
+        return {data: map, size: offset};
     }
 }
 
