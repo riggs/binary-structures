@@ -69,7 +69,7 @@ interface Pack_Options extends Common_Options {
 interface Packed {
     size: Size;
     buffer: ArrayBuffer | Embedded;
-    count?: number;
+    index?: number;
 }
 
 interface Packer {
@@ -222,19 +222,16 @@ class Byte_Array_Class extends Array<Struct> {
         return {data: array, size: offset};
     };
 
-    pack(data: any, options: Pack_Options = {}) {
+    pack(data: any, options: Pack_Options = {}, index = 0) {
         let {data_view, byte_offset = 0, little_endian, context = data} = options;
         let offset = 0;
-        let index = 0;
         const packed: Packed[] = [];
 
         for (const item of this) {
             const datum = this.encode !== undefined ? this.encode(data[index], context) : data[index];
             let {size, buffer} = item.pack(datum, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context});
-            let count;
             if (typeof buffer === 'symbol') {
-                ({size, buffer, count} = embed.get(buffer).pack(data.slice(index), {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context}));
-                index += count;
+                ({size, buffer, index} = embed.get(buffer).pack(data, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context}, index));
             } else {
                 index++;
             }
@@ -246,26 +243,30 @@ class Byte_Array_Class extends Array<Struct> {
 
         if (data_view === undefined) {
             data_view = new DataView(new ArrayBuffer(Math.ceil(offset)));
-            let _offset = 0;
-            for (const {size, buffer} of packed) {
-                /* Copy all the data from the returned buffers into one grand buffer. */
-                const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer));
-                /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
-                const byte_array = Byte_Array();
-                for (let i = 0; i < Math.floor(size); i++) {
-                    byte_array.push(Uint(8));
-                }
-                if (size % 1) {
-                    byte_array.push(Bits((size % 1) * 8));
-                }
-                /* Pack the bytes into the buffer */
-                byte_array.pack(bytes, {data_view, byte_offset: _offset});
-
-                _offset += size;
-            }
+            Byte_Array_Class.concat_buffers(packed, data_view);
         }
 
-        return {size: offset, buffer: data_view.buffer, count: index};
+        return {size: offset, buffer: data_view.buffer, index};
+    }
+
+    protected static concat_buffers(packed: Packed[], data_view: DataView) {
+        let _offset = 0;
+        for (const {size, buffer} of packed) {
+            /* Copy all the data from the returned buffers into one grand buffer. */
+            const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer));
+            /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
+            const byte_array = Byte_Array();
+            for (let i = 0; i < Math.floor(size); i++) {
+                byte_array.push(Uint(8));
+            }
+            if (size % 1) {
+                byte_array.push(Bits((size % 1) * 8));
+            }
+            /* Pack the bytes into the buffer */
+            byte_array.pack(bytes, {data_view, byte_offset: _offset});
+
+            _offset += size;
+        }
     }
 }
 
@@ -325,6 +326,31 @@ class Repeat_Class extends Byte_Array_Class {
             array = this.decode(array, context);
         }
         return {data: array, size: offset};
+    }
+
+    pack(data: any, options: Pack_Options = {}, index = 0) {
+        let {data_view, byte_offset = 0, little_endian, context = data} = options;
+        let offset = 0;
+        const packed: Packed[] = [];
+        let size, buffer;
+
+        let count = 0;
+        const repeats = typeof this.repeat === "number" ? this.repeat : this.repeat(context);
+        while (count < repeats) {
+            ({size, buffer, index} = super.pack(data, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context}, index));
+            if (data_view === undefined) {
+                packed.push({size, buffer});
+            }
+            offset += size;
+            count++;
+        }
+
+        if (data_view === undefined) {
+            data_view = new DataView(new ArrayBuffer(Math.ceil(offset)));
+            Byte_Array_Class.concat_buffers(packed, data_view);
+        }
+
+        return {size: offset, buffer: data_view.buffer, index}
     }
 }
 

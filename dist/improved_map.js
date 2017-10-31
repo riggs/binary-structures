@@ -9,11 +9,24 @@ Map.assign = function (target, ...sources) {
 Map.prototype.update = function (...sources) {
     return Map.assign(this, ...sources);
 };
-Map.prototype.asObject = function () {
-    let result = Object.create(null);
-    for (let [key, value] of this) {
-        result[key] = value;
+Map.prototype.toObject = function () {
+    const result = Object.create(null);
+    for (const [key, value] of this) {
+        if (typeof key === "string" || typeof key === "symbol") {
+            result[key] = value;
+        }
+        else {
+            result[key.toString()] = value;
+        }
     }
     return result;
+};
+Map.prototype.pop = function (key, otherwise) {
+    if (!this.has(key)) {
+        return otherwise;
+    }
+    const value = this.get(key);
+    this.delete(key);
+    return value;
 };
 //# sourceMappingURL=improved_map.js.map
