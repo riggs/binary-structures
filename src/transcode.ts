@@ -54,6 +54,7 @@ export const inspect = {
 
 interface Common_Options {
     byte_offset?: number;
+    little_endian?: boolean | undefined;
     context?: Context;
 }
 
@@ -101,18 +102,18 @@ const bakery /* factory that makes Bytes */ = (serializer: Serializer<Primatives
         const {encode, decode} = transcoders;
 
         const pack: Packer = (data, options = {}) => {
-            let {data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, context} = options;
+            let {data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, little_endian = transcoders.little_endian, context} = options;
 
             if (encode !== undefined) {
                 data = encode(data, context);
             }
-            const size = (serializer(data, {bits, data_view, byte_offset}) / 8);
+            const size = (serializer(data, {bits, data_view, byte_offset, little_endian}) / 8);
             return {size, buffer: data_view.buffer};
         };
 
-        const parse: Parser = ({data_view, byte_offset = 0, context}) => {
+        const parse: Parser = ({data_view, byte_offset = 0, little_endian = transcoders.little_endian, context}) => {
 
-            let data = deserializer({bits, data_view, byte_offset});
+            let data = deserializer({bits, data_view, byte_offset, little_endian});
 
             if (decode !== undefined) {
                 data = decode(data, context);
@@ -196,13 +197,13 @@ class Byte_Array_Class extends Array<Struct> {
         this.little_endian = little_endian;
     }
 
-    parse({data_view, byte_offset = 0, context}: Parse_Options) {
+    parse({data_view, byte_offset = 0, little_endian = this.little_endian, context}: Parse_Options) {
         let offset = 0;
         let array: Context_Array = [];
         array[Symbol.Parent] = context;
 
         for (const item of this) {
-            let {data, size} = item.parse({data_view, byte_offset: byte_offset + offset, context: array});
+            let {data, size} = item.parse({data_view, byte_offset: byte_offset + offset, little_endian, context: array});
             offset += size;
             if (typeof data === 'symbol') {
                 data = embed.pop(data);
@@ -221,13 +222,13 @@ class Byte_Array_Class extends Array<Struct> {
     };
 
     pack(data: any, options: Pack_Options = {}) {
-        let {data_view, byte_offset = 0, context = data} = options;
+        let {data_view, byte_offset = 0, little_endian, context = data} = options;
         let offset = 0;
         const packed: Packed[] = [];
 
         for (const [index, item] of this.entries()) {
             const datum = this.encode !== undefined ? this.encode(data[index], context) : data[index];
-            const {size, buffer} = item.pack(datum, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, context});
+            const {size, buffer} = item.pack(datum, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context});
             offset += size;
             if (typeof buffer === 'symbol') {
                 // FIXME: TODO
@@ -237,10 +238,10 @@ class Byte_Array_Class extends Array<Struct> {
         }
 
         if (data_view === undefined) {
-            /* Copy all the data from the returned buffers into one grand buffer. */
             data_view = new DataView(new ArrayBuffer(Math.ceil(offset)));
             let _offset = 0;
             for (const {size, buffer} of packed) {
+                /* Copy all the data from the returned buffers into one grand buffer. */
                 const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer));
                 /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
                 const byte_array = Byte_Array();
@@ -251,7 +252,6 @@ class Byte_Array_Class extends Array<Struct> {
                     byte_array.push(Bits((size % 1) * 8));
                 }
                 /* Pack the bytes into the buffer */
-                console.log(size, byte_array);
                 byte_array.pack(bytes, {data_view, byte_offset: _offset});
 
                 _offset += size;
@@ -295,7 +295,7 @@ class Repeat_Class extends Byte_Array_Class {
         this.repeat = repeat;
     }
 
-    parse({data_view, byte_offset = 0, context}: Parse_Options) {
+    parse({data_view, byte_offset = 0, little_endian = this.little_endian, context}: Parse_Options) {
         let offset = 0;
         let array: Context_Array = [];
         array[Symbol.Parent] = context;
@@ -306,7 +306,7 @@ class Repeat_Class extends Byte_Array_Class {
         let count = 0;
         const repeats = typeof this.repeat === "number" ? this.repeat : this.repeat(context);
         while (count < repeats) {
-            const {data, size} = super.parse({data_view, byte_offset: byte_offset + offset, context: array});
+            const {data, size} = super.parse({data_view, byte_offset: byte_offset + offset, little_endian, context: array});
             array.push(...data);
             offset += size;
             count++;
@@ -337,13 +337,13 @@ class Byte_Map_Class extends Map<string, Struct> {
         this.little_endian = little_endian;
     }
 
-    parse({data_view, byte_offset = 0, context}: Parse_Options) {
+    parse({data_view, byte_offset = 0, little_endian = this.little_endian, context}: Parse_Options) {
         let offset = 0;
         let map: Context_Object = new Map();
         map[Symbol.Parent] = context;
 
         for (const [key, value] of this) {
-            let {data, size} = value.parse({data_view, byte_offset: byte_offset + offset, context: map});
+            let {data, size} = value.parse({data_view, byte_offset: byte_offset + offset, little_endian, context: map});
             offset += size;
             if (typeof data === 'symbol') {
                 data = embed.pop(data);
