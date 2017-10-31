@@ -22,7 +22,7 @@ export type Size = number;
 
 interface Serialization_Options {
     bits: Size;
-    byte_offset: number;
+    byte_offset?: number;
     data_view: DataView;
     little_endian?: boolean;
 }
@@ -36,7 +36,7 @@ export interface Deserializer<T> {
 }
 
 const write_bit_shift: ((packer: Serializer<any>, value: any, options: Serialization_Options) => Size) =
-        (packer, value, {bits, data_view, byte_offset, little_endian}) => {
+        (packer, value, {bits, data_view, byte_offset = 0, little_endian}) => {
     /*
     bit_offset = 5
     buffer = 00011111
@@ -60,7 +60,7 @@ const write_bit_shift: ((packer: Serializer<any>, value: any, options: Serializa
 };
 
 const read_bit_shift: ((parser: Deserializer<any>, options: Serialization_Options) => any) =
-    (parser, {bits, data_view, byte_offset, little_endian}) => {
+    (parser, {bits, data_view, byte_offset = 0, little_endian}) => {
         const bit_offset = (byte_offset % 1) * 8;
         byte_offset = Math.floor(byte_offset);
         const bytes = new Uint8Array(Math.ceil(bits / 8));
@@ -77,7 +77,7 @@ const read_bit_shift: ((parser: Deserializer<any>, options: Serialization_Option
         return parser({bits, byte_offset: 0, data_view: new DataView(bytes.buffer), little_endian});
     };
 
-export const uint_pack: Serializer<number> = (value, {bits, data_view, byte_offset, little_endian}) => {
+export const uint_pack: Serializer<number> = (value, {bits, data_view, byte_offset = 0, little_endian}) => {
     const original_value = value;
     value = Math.floor(original_value);
     if (value < 0 || value > 2**bits || original_value !== value || value > Number.MAX_SAFE_INTEGER) {
@@ -123,7 +123,7 @@ export const uint_pack: Serializer<number> = (value, {bits, data_view, byte_offs
     }
 };
 
-export const uint_parse: Deserializer<number> = ({bits, data_view, byte_offset, little_endian}) => {
+export const uint_parse: Deserializer<number> = ({bits, data_view, byte_offset = 0, little_endian}) => {
     if (byte_offset % 1) {
         return read_bit_shift(uint_parse, {bits, data_view, byte_offset, little_endian});
     } else {
@@ -161,7 +161,7 @@ export const uint_parse: Deserializer<number> = ({bits, data_view, byte_offset, 
     }
 };
 
-export const int_pack: Serializer<number> = (value, {bits, data_view, byte_offset, little_endian}) => {
+export const int_pack: Serializer<number> = (value, {bits, data_view, byte_offset = 0, little_endian}) => {
     const original_value = value;
     value = Math.floor(original_value);
     if (value < -(2**(bits-1)) || value > 2**(bits - 1) - 1 || original_value !== value) {
@@ -187,7 +187,7 @@ export const int_pack: Serializer<number> = (value, {bits, data_view, byte_offse
     }
 };
 
-export const int_parse: Deserializer<number> = ({bits, data_view, byte_offset, little_endian}) => {
+export const int_parse: Deserializer<number> = ({bits, data_view, byte_offset = 0, little_endian}) => {
     if (byte_offset % 1) {
         return read_bit_shift(int_parse, {bits, data_view, byte_offset, little_endian});
     } else {
@@ -204,7 +204,7 @@ export const int_parse: Deserializer<number> = ({bits, data_view, byte_offset, l
     }
 };
 
-export const float_pack: Serializer<number> = (value, {bits, data_view, byte_offset, little_endian}) => {
+export const float_pack: Serializer<number> = (value, {bits, data_view, byte_offset = 0, little_endian}) => {
     /* TODO: Input validation */
     if (byte_offset % 1) {
         return write_bit_shift(float_pack, value, {bits, data_view, byte_offset, little_endian});
@@ -223,7 +223,7 @@ export const float_pack: Serializer<number> = (value, {bits, data_view, byte_off
     }
 };
 
-export const float_parse: Deserializer<number> = ({bits, data_view, byte_offset, little_endian}) => {
+export const float_parse: Deserializer<number> = ({bits, data_view, byte_offset = 0, little_endian}) => {
     if (byte_offset % 1) {
         return read_bit_shift(float_parse, {bits, data_view, byte_offset, little_endian});
     } else {
@@ -238,7 +238,7 @@ export const float_parse: Deserializer<number> = ({bits, data_view, byte_offset,
     }
 };
 
-export const utf8_pack: Serializer<string> = (value, {bits, data_view, byte_offset}) => {
+export const utf8_pack: Serializer<string> = (value, {bits, data_view, byte_offset = 0}) => {
     if (byte_offset % 1) {
         return write_bit_shift(utf8_pack, value, {bits, data_view, byte_offset});
     } else {
@@ -257,7 +257,7 @@ export const utf8_pack: Serializer<string> = (value, {bits, data_view, byte_offs
     }
 };
 
-export const utf8_parse: Deserializer<string> = ({bits, data_view, byte_offset}) => {
+export const utf8_parse: Deserializer<string> = ({bits, data_view, byte_offset = 0}) => {
     if (byte_offset % 1) {
         return read_bit_shift(utf8_parse, {bits, data_view, byte_offset});
     } else {

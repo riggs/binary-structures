@@ -34,9 +34,7 @@ describe("Byte_Array parsing", () => {
         const lower = now % 2**32;
         const upper = Math.floor(now / 2**32);
         const data_view = new DataView(new Uint32Array([lower, upper]).buffer);
-        const byte_array = Byte_Array(Uint(64));
-        expect(byte_array.parse({data_view, little_endian: true})).toEqual({data: [now], size: 8});
-        byte_array.little_endian = true;
+        const byte_array = Byte_Array({little_endian: true}, Uint(64));
         expect(byte_array.parse({data_view})).toEqual({data: [now], size: 8});
         byte_array.little_endian = undefined;
         byte_array[0] = Uint(64, {little_endian: true});
@@ -69,6 +67,13 @@ describe("Byte_Array packing", () => {
             expect(size).toEqual(4);
             expect(Array.from(new Uint8Array(buffer))).toEqual([1, 11, 12, 3]);
         });
+        test("pack some bits & bytes", () => {
+            const byte_array = Byte_Array(Bits(2), Uint(8), Uint(8), Bits(6));
+            const data_view = new DataView(new ArrayBuffer(3));
+            const {size, buffer} = byte_array.pack([2, 170, 170, 42], {data_view});
+            expect(size).toEqual(3);
+            expect(Array.from(new Uint8Array(buffer))).toEqual([0xAA, 0xAA, 0xAA]);
+        });
     });
     describe("without a given Data View", () => {
         test("pack some bytes", () => {
@@ -83,6 +88,12 @@ describe("Byte_Array packing", () => {
             expect(size).toEqual(4);
             expect(Array.from(new Uint8Array(buffer))).toEqual([1, 11, 12, 3]);
         });
+        test("pack some bits & bytes", () => {
+            const byte_array = Byte_Array(Bits(2), Uint(8), Uint(8), Bits(6));
+            const {size, buffer} = byte_array.pack([2, 170, 170, 42]);
+            expect(size).toEqual(3);
+            expect(Array.from(new Uint8Array(buffer))).toEqual([0xAA, 0xAA, 0xAA]);
+        });
     });
 });
 describe("Byte_Map parsing", () => {
@@ -96,9 +107,7 @@ describe("Byte_Map parsing", () => {
         const lower = now % 2**32;
         const upper = Math.floor(now / 2**32);
         const data_view = new DataView(new Uint32Array([lower, upper]).buffer);
-        const byte_map = Byte_Map().set('now', Uint(64));
-        expect(byte_map.parse({data_view, little_endian: true})).toEqual({data: {now: now}, size: 8});
-        byte_map.little_endian = true;
+        const byte_map = Byte_Map({little_endian: true}).set('now', Uint(64));
         expect(byte_map.parse({data_view})).toEqual({data: {now: now}, size: 8});
         byte_map.little_endian = undefined;
         byte_map.set('now', Uint(64, {little_endian: true}));

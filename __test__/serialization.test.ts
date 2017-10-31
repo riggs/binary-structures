@@ -33,20 +33,31 @@ describe("uint_pack function", () => {
         expect(data_view.getUint32(0, true)).toEqual(now % 2**32);
         expect(data_view.getUint32(4, true)).toEqual(Math.floor(now / 2**32));
     });
+    test("pack uint1-7 without offsets", () => {
+        const data_view = new DataView(new ArrayBuffer(1));
+        for (let bits = 1; bits < 7; bits++) {
+            const bit_length = uint_pack(2**bits-1, {bits, data_view});
+            expect(bit_length).toEqual(bits);
+            expect(data_view.getUint8(0)).toEqual(2**bits-1);
+            data_view.setUint8(0, 0);
+        }
+    });
+    test("pack a uint1 (1 bit) with a bit offset", () =>{
+        const buffer = new ArrayBuffer(1);
+        const data_view = new DataView(buffer);
+        for (let bit_offset = 0; bit_offset < 7; bit_offset++) {
+            const bit_length = uint_pack(1, {bits: 1, byte_offset: bit_offset/8, data_view: data_view});
+            expect(bit_length).toEqual(1);
+            expect(data_view.getUint8(0)).toEqual(2**bit_offset);
+            data_view.setUint8(0, 0);
+        }
+    });
     test("pack a uint16 little endian with a bit offset", () => {
         const buffer = new ArrayBuffer(2+1);
         const data_view = new DataView(buffer);
         const bit_length = uint_pack(0xAF0F, {bits: 16, byte_offset: 6/8, data_view: data_view, little_endian: true});
         expect(bit_length).toEqual(16);
         expect(Array.from(new Uint8Array(buffer))).toEqual([0b00101011, 0b11000011, 0b11000000].reverse());
-    });
-    test("pack a uint1 (bit1) with a bit offset", () =>{
-        const buffer = new ArrayBuffer(1);
-        const data_view = new DataView(buffer);
-        const bit_offset = 7;
-        const bit_length = uint_pack(1, {bits: 1, byte_offset: bit_offset/8, data_view: data_view});
-        expect(bit_length).toEqual(1);
-        expect(data_view.getUint8(0)).toEqual(2**bit_offset);
     });
     test("pack a byte with a negative value throws an error", () => {
         expect(() => {uint_pack(-1, {bits: 8, byte_offset: 0, data_view: new DataView(new ArrayBuffer(1))})})
