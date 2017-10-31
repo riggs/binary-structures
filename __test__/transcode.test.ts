@@ -44,7 +44,7 @@ describe("Byte_Array parsing", () => {
     });
     test("embedded arrays", () => {
         const data_view = new DataView(new Uint8Array([0, 1, 2, 3]).buffer);
-        const byte_array = Byte_Array(Uint(8), Embed(Byte_Array({}, Uint(8), Uint(8))), Uint(8));
+        const byte_array = Byte_Array(Uint(8), Embed(Byte_Array(Uint(8), Uint(8))), Uint(8));
         expect(byte_array.parse({data_view})).toEqual({data: [0, 1, 2, 3], size: 4});
     });
     test("repeat", () => {
@@ -53,7 +53,15 @@ describe("Byte_Array parsing", () => {
         expect(byte_array.parse({data_view})).toEqual({data: [0, [1, 2, 3], 4], size: 5});
     });
 });
-
+describe("Byte_Array packing", () => {
+    test("pack some bytes", () => {
+        const byte_array = Byte_Array(Uint(8), Uint(8), Uint(8));
+        const data_view = new DataView(new ArrayBuffer(3));
+        const {size, buffer} = byte_array.pack([41, 42, 170], {data_view});
+        expect(size).toEqual(3);
+        expect(Array.from(new Uint8Array(buffer))).toEqual([41, 42, 170]);
+    });
+});
 describe("Byte_Map parsing", () => {
     test("parse a byte", () => {
         const data_view = new DataView(new Uint8Array([42]).buffer);

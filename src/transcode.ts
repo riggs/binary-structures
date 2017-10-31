@@ -20,6 +20,8 @@ import './improved_map';
 
 type Primatives = number | string;
 
+type Embedded = symbol;
+
 /* Need to hang Parent off the global Symbol because of Typescript deficiency */
 Symbol.Parent = Symbol.for("Parent");
 
@@ -64,17 +66,22 @@ interface Pack_Options extends Common_Options {
     data_view?: DataView;
 }
 
-interface Packer {
-    (data: any, options: Pack_Options): {size: Size, buffer: ArrayBuffer};
+interface Packed {
+    size: Size;
+    buffer: ArrayBuffer | Embedded;
 }
 
-interface Parsed<T> {
-    data: T;
+interface Packer {
+    (data: any, options?: Pack_Options): Packed;
+}
+
+interface Parsed {
+    data: any | Embedded;
     size: Size; /* In Bytes */
 }
 
 interface Parser {
-    (options: Parse_Options): Parsed<any>;
+    (options: Parse_Options): Parsed;
 }
 
 interface Struct {
@@ -87,15 +94,15 @@ interface Bytes<T> {
 }
 
 const bakery /* factory that makes Bytes */ = (serializer: Serializer<Primatives>, deserializer: Deserializer<Primatives>, verify_size: (bits: number) => boolean) => {
-    return <Bytes<Primatives>>((bits, transcoders) => {
+    return <Bytes<Primatives>>((bits, transcoders = {}) => {
         if(!verify_size(bits)) {
             throw new Error(`Invalid size: ${bits}`);
         }
 
-        if (transcoders === undefined) transcoders = {};
         const {encode, decode} = transcoders;
 
-        const pack: Packer = (data, {data_view = new DataView(new ArrayBuffer(bits / 8)), byte_offset = 0, little_endian = transcoders!.little_endian, context}) => {
+        const pack: Packer = (data, options = {}) => {
+            let {data_view = new DataView(new ArrayBuffer(bits / 8)), byte_offset = 0, little_endian = transcoders!.little_endian, context} = options;
 
             if (encode !== undefined) {
                 data = encode(data, context);
@@ -131,14 +138,13 @@ export const Utf8: Bytes<string> = bakery(utf8_pack, utf8_parse, (s) => s % 8 ==
 
 let embed = new Map();
 export const Embed: ((thing: Byte_Array_Class | Byte_Map_Class) => Struct) = (thing) => {
-    const parse_symbol = Symbol();
 
     /* Don't use the default decoder if the thing is embedded */
-    console.log(thing.decode);
-    console.log(Object.getPrototypeOf(thing));
     if (thing.decode === default_decoder) {
         thing.decode = undefined;
     }
+
+    const parse_symbol = Symbol();
 
     const parse: Parser = (options) => {
         const {size, data} = thing.parse(options);
@@ -146,8 +152,14 @@ export const Embed: ((thing: Byte_Array_Class | Byte_Map_Class) => Struct) = (th
         return {size, data: parse_symbol};
     };
 
-    // TODO: FIXME Pack also needs special handling.
-    return {pack: thing.pack, parse};
+    const pack_symbol = Symbol();
+    embed.set(pack_symbol, thing);
+
+    const pack: Packer = (data, options) => {
+        return {size: 0, buffer: pack_symbol};
+    };
+
+    return {pack: pack, parse};
 };
 
 type Chooser = (context?: Context) => number | string;
@@ -161,7 +173,7 @@ export const Branch = (choose: Chooser, choices: Choices): Struct => {
         return choices[choose(options.context)].parse(options);
     };
 
-    const pack: Packer = (data, options) => {
+    const pack: Packer = (data, options = {}) => {
         return choices[choose(options.context)].pack(data, options);
     };
     return {parse, pack};
@@ -208,6 +220,32 @@ class Byte_Array_Class extends Array<Struct> {
         }
         return {data: array, size: offset};
     };
+
+    pack(data: any, options: Pack_Options = {}) {
+        let {data_view, byte_offset = 0, little_endian, context = data} = options;
+        let offset = 0;
+        const packed: Packed[] = [];
+
+        for (const [index, item] of this.entries()) {
+            const datum = this.encode !== undefined ? this.encode(data[index], context) : data[index];
+            const {size, buffer} = item.pack(datum, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context});
+            offset += size;
+            if (typeof buffer === 'symbol') {
+                // FIXME: TODO
+            } else if (data_view === undefined) {
+                packed.push({size, buffer});
+            }
+        }
+
+        if (data_view === undefined) {
+            data_view = new DataView(new ArrayBuffer(Math.ceil(offset)));
+            for (const {size, buffer} of packed) {
+                // FIXME: TODO
+            }
+        }
+
+        return {size: offset, buffer: data_view.buffer};
+    }
 }
 
 const _extract_options = (elements: Array<Struct | Transcoders<any[]>>) => {
