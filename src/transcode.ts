@@ -69,10 +69,11 @@ interface Pack_Options extends Common_Options {
 interface Packed {
     size: Size;
     buffer: ArrayBuffer | Embedded;
+    count?: number;
 }
 
 interface Packer {
-    (data: any, options?: Pack_Options): Packed;
+    (data: any, options: Pack_Options): Packed;
 }
 
 interface Parsed {
@@ -224,17 +225,23 @@ class Byte_Array_Class extends Array<Struct> {
     pack(data: any, options: Pack_Options = {}) {
         let {data_view, byte_offset = 0, little_endian, context = data} = options;
         let offset = 0;
+        let index = 0;
         const packed: Packed[] = [];
 
-        for (const [index, item] of this.entries()) {
+        for (const item of this) {
             const datum = this.encode !== undefined ? this.encode(data[index], context) : data[index];
-            const {size, buffer} = item.pack(datum, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context});
-            offset += size;
+            let {size, buffer} = item.pack(datum, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context});
+            let count;
             if (typeof buffer === 'symbol') {
-                // FIXME: TODO
-            } else if (data_view === undefined) {
+                ({size, buffer, count} = embed.get(buffer).pack(data.slice(index), {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context}));
+                index += count;
+            } else {
+                index++;
+            }
+            if (data_view === undefined) {
                 packed.push({size, buffer});
             }
+            offset += size;
         }
 
         if (data_view === undefined) {
@@ -258,7 +265,7 @@ class Byte_Array_Class extends Array<Struct> {
             }
         }
 
-        return {size: offset, buffer: data_view.buffer};
+        return {size: offset, buffer: data_view.buffer, count: index};
     }
 }
 
@@ -347,7 +354,6 @@ class Byte_Map_Class extends Map<string, Struct> {
             offset += size;
             if (typeof data === 'symbol') {
                 data = embed.pop(data);
-                console.log(data);
                 map.update(data);
             } else {
                 map.set(key, data);

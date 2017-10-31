@@ -66,6 +66,14 @@ describe("Byte_Array packing", () => {
             expect(size).toEqual(4);
             expect(Array.from(new Uint8Array(buffer))).toEqual([1, 11, 12, 3]);
         });
+        test("embed an array", () => {
+            const byte_array = Byte_Array(Uint(8), Embed(Byte_Array(Uint(8), Uint(8))), Uint(8));
+            const data_view = new DataView(new ArrayBuffer(4));
+            const {size, buffer, count} = byte_array.pack([6, 28, 41, 127], {data_view});
+            expect(size).toEqual(4);
+            expect(count).toEqual(4);
+            expect(Array.from(new Uint8Array(buffer))).toEqual([6, 28, 41, 127]);
+        });
         test("pack some bits & bytes", () => {
             const byte_array = Byte_Array(Bits(2), Uint(8), Uint(8), Bits(6));
             const data_view = new DataView(new ArrayBuffer(3));
@@ -86,6 +94,13 @@ describe("Byte_Array packing", () => {
             const {size, buffer} = byte_array.pack([1, [11, 12], 3]);
             expect(size).toEqual(4);
             expect(Array.from(new Uint8Array(buffer))).toEqual([1, 11, 12, 3]);
+        });
+        test("embed an array", () => {
+            const byte_array = Byte_Array(Uint(8), Embed(Byte_Array(Uint(8), Uint(8))), Uint(8));
+            const {size, buffer, count} = byte_array.pack([6, 28, 41, 127]);
+            expect(size).toEqual(4);
+            expect(count).toEqual(4);
+            expect(Array.from(new Uint8Array(buffer))).toEqual([6, 28, 41, 127]);
         });
         test("pack some bits & bytes", () => {
             const byte_array = Byte_Array(Bits(2), Uint(8), Uint(8), Bits(6));
