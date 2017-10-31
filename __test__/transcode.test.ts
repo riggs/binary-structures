@@ -54,12 +54,35 @@ describe("Byte_Array parsing", () => {
     });
 });
 describe("Byte_Array packing", () => {
-    test("pack some bytes", () => {
-        const byte_array = Byte_Array(Uint(8), Uint(8), Uint(8));
-        const data_view = new DataView(new ArrayBuffer(3));
-        const {size, buffer} = byte_array.pack([41, 42, 170], {data_view});
-        expect(size).toEqual(3);
-        expect(Array.from(new Uint8Array(buffer))).toEqual([41, 42, 170]);
+    describe("with a given Data View", () => {
+        test("pack some bytes", () => {
+            const byte_array = Byte_Array(Uint(8), Uint(8), Uint(8));
+            const data_view = new DataView(new ArrayBuffer(3));
+            const {size, buffer} = byte_array.pack([41, 42, 170], {data_view});
+            expect(size).toEqual(3);
+            expect(Array.from(new Uint8Array(buffer))).toEqual([41, 42, 170]);
+        });
+        test("nest an array", () => {
+            const byte_array = Byte_Array(Uint(8), Byte_Array(Uint(8), Uint(8)), Uint(8));
+            const data_view = new DataView(new ArrayBuffer(4));
+            const {size, buffer} = byte_array.pack([1, [11, 12], 3], {data_view});
+            expect(size).toEqual(4);
+            expect(Array.from(new Uint8Array(buffer))).toEqual([1, 11, 12, 3]);
+        });
+    });
+    describe("without a given Data View", () => {
+        test("pack some bytes", () => {
+            const byte_array = Byte_Array(Uint(8), Uint(8), Uint(8));
+            const {size, buffer} = byte_array.pack([41, 42, 170]);
+            expect(size).toEqual(3);
+            expect(Array.from(new Uint8Array(buffer))).toEqual([41, 42, 170]);
+        });
+        test("nest an array", () => {
+            const byte_array = Byte_Array(Uint(8), Byte_Array(Uint(8), Uint(8)), Uint(8));
+            const {size, buffer} = byte_array.pack([1, [11, 12], 3]);
+            expect(size).toEqual(4);
+            expect(Array.from(new Uint8Array(buffer))).toEqual([1, 11, 12, 3]);
+        });
     });
 });
 describe("Byte_Map parsing", () => {

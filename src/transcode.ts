@@ -239,8 +239,21 @@ class Byte_Array_Class extends Array<Struct> {
 
         if (data_view === undefined) {
             data_view = new DataView(new ArrayBuffer(Math.ceil(offset)));
+            let _offset = 0;
             for (const {size, buffer} of packed) {
-                // FIXME: TODO
+                const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer));
+                /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
+                const byte_array = Byte_Array();
+                for (let i = 0; i < size; i++) {
+                    byte_array.push(Uint(8));
+                }
+                if (size % 1) {
+                    byte_array.push(Bits((size % 1) * 8));
+                }
+                /* Pack the bytes into the buffer */
+                byte_array.pack(bytes, {data_view, byte_offset: _offset});
+
+                _offset += size;
             }
         }
 
