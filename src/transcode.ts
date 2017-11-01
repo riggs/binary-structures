@@ -20,25 +20,26 @@ import './improved_map';
 
 type Primatives = number | string;
 
-type Embedded = symbol;
+/* Need to hang Context_Parent off the global Symbol because of Typescript deficiency */
+Symbol.Context_Parent = Symbol.for("Context_Parent");
 
-/* Need to hang Parent off the global Symbol because of Typescript deficiency */
-Symbol.Parent = Symbol.for("Parent");
-
-interface Context_Object extends Map<string, any>{
-    [Symbol.Parent]?: Context;
+interface Context_Map extends Map<string, any>{
+    [Symbol.Context_Parent]?: Context;
 }
 
 interface Context_Array extends Array<any> {
-    [Symbol.Parent]?: Context;
+    [Symbol.Context_Parent]?: Context;
 }
 
-type Context = Context_Object | Context_Array;
+type Context = Context_Map | Context_Array;
 
 /* These functions provided by library consumer to convert data to usable structures. */
+export type Encoder<T> = (data: any, context?: any) => T;
+export type Decoder<T> = (data: T, context?: Context) => any;
+
 interface Transcoders<T> {
-    encode?: (data: any, context?: Context) => T;
-    decode?: (data: T, context?: Context) => any;
+    encode?: Encoder<T>;
+    decode?: Decoder<T>;
     little_endian?: boolean;
 }
 
@@ -52,39 +53,43 @@ export const inspect = {
     decode: inspect_transcoder,
 };
 
-interface Common_Options {
+interface Parse_Options {
     byte_offset?: number;
     little_endian?: boolean | undefined;
     context?: Context;
 }
 
-interface Parse_Options extends Common_Options {
-    data_view: DataView;
+interface Pack_Options extends Parse_Options {
+    data_view?: DataView;
 }
 
-interface Pack_Options extends Common_Options {
-    data_view?: DataView;
+interface Fetch {
+    (data: any): any;
 }
 
 interface Packed {
     size: Size;
-    buffer: ArrayBuffer | Embedded;
-    index?: number;
+    buffer: ArrayBuffer;
 }
 
 interface Packer {
-    (data: any, options: Pack_Options): Packed;
+    (data: any, options?: Pack_Options, fetch?: Fetch): Packed;
+}
+
+type Destination = Map<string, any> | Array<any>;
+
+interface Deliver {
+    (data: any): void;
 }
 
 interface Parsed {
-    data: any | Embedded;
+    data: any;
     size: Size; /* In Bytes */
 }
 
 interface Parser {
-    (options: Parse_Options): Parsed;
+    (data_view: DataView, options?: Parse_Options, deliver?: Deliver): Parsed;
 }
-
 interface Struct {
     pack: Packer;
     parse: Parser;
@@ -102,9 +107,11 @@ const bakery /* factory that makes Bytes */ = (serializer: Serializer<Primatives
 
         const {encode, decode} = transcoders;
 
-        const pack: Packer = (data, options = {}) => {
+        const pack: Packer = (data, options = {}, fetch) => {
             let {data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, little_endian = transcoders.little_endian, context} = options;
-
+            if (fetch !== undefined) {
+                data = fetch(data);
+            }
             if (encode !== undefined) {
                 data = encode(data, context);
             }
@@ -112,12 +119,16 @@ const bakery /* factory that makes Bytes */ = (serializer: Serializer<Primatives
             return {size, buffer: data_view.buffer};
         };
 
-        const parse: Parser = ({data_view, byte_offset = 0, little_endian = transcoders.little_endian, context}) => {
+        const parse: Parser = (data_view, options = {}, deliver) => {
+            let {byte_offset = 0, little_endian = transcoders.little_endian, context} = options;
 
             let data = deserializer({bits, data_view, byte_offset, little_endian});
 
             if (decode !== undefined) {
                 data = decode(data, context);
+            }
+            if (deliver !== undefined) {
+                deliver(data);
             }
             return {data, size: bits / 8};
         };
@@ -135,34 +146,6 @@ export const Float: Bytes<number> = bakery(float_pack, float_parse, (s) => Float
 
 export const Utf8: Bytes<string> = bakery(utf8_pack, utf8_parse, (s) => s % 8 === 0 && s >= 0);
 
-/* A unique marker used to indicate the referenced Structure should be embedded into the parent */
-
-let embed = new Map();
-export const Embed: ((thing: Byte_Array_Class | Byte_Map_Class) => Struct) = (thing) => {
-
-    /* Don't use the default decoder if the thing is embedded */
-    if (thing.decode === default_decoder) {
-        thing.decode = undefined;
-    }
-
-    const parse_symbol = Symbol();
-
-    const parse: Parser = (options) => {
-        const {size, data} = thing.parse(options);
-        embed.set(parse_symbol, data);
-        return {size, data: parse_symbol};
-    };
-
-    const pack_symbol = Symbol();
-    embed.set(pack_symbol, thing);
-
-    const pack: Packer = (data, options) => {
-        return {size: 0, buffer: pack_symbol};
-    };
-
-    return {pack: pack, parse};
-};
-
 type Chooser = (context?: Context) => number | string;
 interface Choices {
     [choice: number]: Struct;
@@ -170,115 +153,207 @@ interface Choices {
 }
 
 export const Branch = (choose: Chooser, choices: Choices): Struct => {
-    const parse: Parser = (options) => {
-        return choices[choose(options.context)].parse(options);
+    const pack: Packer = (data, options = {}, fetch) => {
+        return choices[choose(options.context)].pack(data, options, fetch);
     };
-
-    const pack: Packer = (data, options = {}) => {
-        return choices[choose(options.context)].pack(data, options);
+    const parse: Parser = (data_view, options = {}, deliver) => {
+        return choices[choose(options.context)].parse(data_view, options, deliver);
     };
     return {parse, pack};
 };
 
-/* Declared in this namespace because Object.getPrototypeOf(thing).default_decoder returns undefined. */
-const default_decoder = (data: any[] | Map<string, any>) => {
-    if (data instanceof Map) {
-        return data.toObject();
-    }
-    return Array.from(data);
+export const Embed: ((thing: Byte_Array_Class | Byte_Map_Class | Struct) => Struct) = (thing) => {
+    const pack: Packer = (data, options, fetch) => {
+        if (thing instanceof Byte_Array_Class) {
+            return thing.pack(data, options, undefined, fetch);
+        } else if (thing instanceof Byte_Map_Class) {
+            return thing.pack(data, options, undefined);
+        } else {
+            return thing.pack(data, options, fetch);
+        }
+    };
+    const parse: Parser = (data_view, options = {}, deliver) => {
+        if (thing instanceof Byte_Array_Class) {
+            return thing.parse(data_view, options, undefined, options.context as Context_Array);
+        } else if (thing instanceof Byte_Map_Class) {
+            return thing.parse(data_view, options, undefined, options.context as Context_Map);
+        } else {
+            return thing.parse(data_view, options, deliver);
+        }
+    };
+    return {pack, parse}
 };
 
-interface Byte_Array_Class extends Struct, Transcoders<any[]>, Array<Struct> {}
+const concat_buffers = (packed: Packed[], byte_length: number) => {
+    const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
+    let _offset = 0;
+    for (const {size, buffer} of packed) {
+        /* Copy all the data from the returned buffers into one grand buffer. */
+        const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer));
+        /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
+        const array = [];
+        for (let i = 0; i < Math.floor(size); i++) {
+            array.push(Uint(8));
+        }
+        if (size % 1) {
+            array.push(Bits((size % 1) * 8));
+        }
+        /* Pack the bytes into the buffer */
+        Byte_Array(...array).pack(bytes, {data_view, byte_offset: _offset});
+
+        _offset += size;
+    }
+    return data_view;
+};
+
+export type Byte_Array = Array<Primatives>;
+type Array_Options = Transcoders<Byte_Array>;
+
+interface Byte_Array_Class extends Struct, Array_Options, Array<Struct> {}
 
 class Byte_Array_Class extends Array<Struct> {
-    constructor({encode, decode = default_decoder, little_endian}: Transcoders<any[]>, ...elements: Struct[]) {
+    constructor({encode, decode, little_endian}: Array_Options, ...elements: Struct[]) {
         super(...elements);
         this.encode = encode;
         this.decode = decode;
         this.little_endian = little_endian;
     }
 
-    parse({data_view, byte_offset = 0, little_endian = this.little_endian, context}: Parse_Options) {
-        let offset = 0;
-        let array: Context_Array = [];
-        array[Symbol.Parent] = context;
-
-        for (const item of this) {
-            let {data, size} = item.parse({data_view, byte_offset: byte_offset + offset, little_endian, context: array});
-            offset += size;
-            if (typeof data === 'symbol') {
-                data = embed.pop(data);
-                if (!(data instanceof Array)) {
-                    throw new Error(`Unable to Embed ${data} into ${this}`)
-                }
-                array.push(...data);
-            } else {
-                array.push(data);
-            }
+    pack(data: any, options: Pack_Options = {}, fetch?: Fetch, fetcher?: Fetch) {
+        let {data_view, byte_offset = 0, little_endian = this.little_endian, context = data} = options;
+        if (fetch !== undefined) {
+            data = fetch(data);
         }
-        if (this.decode !== undefined) {
-            array = this.decode(array, context);
+        if (this.encode !== undefined) {
+            data = this.encode(data, context);
         }
-        return {data: array, size: offset};
-    };
-
-    pack(data: any, options: Pack_Options = {}, index = 0) {
-        let {data_view, byte_offset = 0, little_endian, context = data} = options;
         let offset = 0;
         const packed: Packed[] = [];
 
+        if (fetcher === undefined) {
+            const iterator = data[Symbol.iterator]();
+            fetcher = () => iterator.next().value;
+        }
+
         for (const item of this) {
-            const datum = this.encode !== undefined ? this.encode(data[index], context) : data[index];
-            let {size, buffer} = item.pack(datum, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context});
-            if (typeof buffer === 'symbol') {
-                ({size, buffer, index} = embed.get(buffer).pack(data, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context}, index));
-            } else {
-                index++;
-            }
+            const {size, buffer} = item.pack(data, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context}, fetcher);
             if (data_view === undefined) {
                 packed.push({size, buffer});
             }
             offset += size;
         }
-
         if (data_view === undefined) {
-            data_view = new DataView(new ArrayBuffer(Math.ceil(offset)));
-            Byte_Array_Class.concat_buffers(packed, data_view);
+            data_view = concat_buffers(packed, offset);
         }
-
-        return {size: offset, buffer: data_view.buffer, index};
+        return {size: offset, buffer: data_view.buffer};
     }
 
-    protected static concat_buffers(packed: Packed[], data_view: DataView) {
-        let _offset = 0;
-        for (const {size, buffer} of packed) {
-            /* Copy all the data from the returned buffers into one grand buffer. */
-            const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer));
-            /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
-            const byte_array = Byte_Array();
-            for (let i = 0; i < Math.floor(size); i++) {
-                byte_array.push(Uint(8));
-            }
-            if (size % 1) {
-                byte_array.push(Bits((size % 1) * 8));
-            }
-            /* Pack the bytes into the buffer */
-            byte_array.pack(bytes, {data_view, byte_offset: _offset});
-
-            _offset += size;
+    parse(data_view: DataView, options: Parse_Options = {}, deliver?: Deliver, results?: Context_Array) {
+        const {byte_offset = 0, little_endian = this.little_endian, context} = options;
+        if (results === undefined) {
+            results = [];
+            results[Symbol.Context_Parent] = context;
         }
+        let offset = 0;
+
+        for (const item of this) {
+            const {data, size} = item.parse(data_view,
+                                            {byte_offset: byte_offset + offset, little_endian, context: results},
+                                            (data) => results!.push(data));
+            offset += size;
+        }
+        if (this.decode !== undefined) {
+            results = this.decode(results, context);
+        }
+        if (deliver !== undefined) {
+            deliver(results);
+        }
+        return {data: results, size: offset};
     }
 }
 
-const _extract_options = (elements: Array<Struct | Transcoders<any[]>>) => {
-    const options: Transcoders<any[]> = {};
-    if (elements.length > 0 && typeof elements[0] !== "symbol") {
+type Repeats = number | ((context?: Context) => number);
+
+class Repeat_Class extends Byte_Array_Class {
+    repeat: Repeats;
+
+    constructor(repeat: Repeats, options: Array_Options, ...elements: Struct[]) {
+        super(options, ...elements);
+        this.repeat = repeat;
+    }
+
+    /* Basically copy & pasted from Byte_Array_Class with stuff added in the middle. */
+    pack(data: any, options: Pack_Options = {}, fetch?: Fetch, fetcher?: Fetch) {
+        let {data_view, byte_offset = 0, little_endian = this.little_endian, context = data} = options;
+        const repeats = typeof this.repeat === "number" ? this.repeat : this.repeat(context);
+        if (fetch !== undefined) {
+            data = fetch(data);
+        }
+        if (this.encode !== undefined) {
+            data = this.encode(data, context);
+        }
+        let offset = 0;
+        const packed: Packed[] = [];
+
+        if (fetcher === undefined) {
+            const iterator = data[Symbol.iterator]();
+            fetcher = () => iterator.next().value;
+        }
+
+        for (let count = 0; count < repeats; count++) {
+            for (const item of this) {
+                const {size, buffer} = item.pack(data, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context}, fetcher);
+                if (data_view === undefined) {
+                    packed.push({size, buffer});
+                }
+                offset += size;
+            }
+        }
+        if (data_view === undefined) {
+            data_view = concat_buffers(packed, offset);
+        }
+        return {size: offset, buffer: data_view.buffer};
+    }
+
+    /* Basically copy & pasted from Byte_Array_Class with stuff added in the middle. */
+    parse(data_view: DataView, options: Parse_Options = {}, deliver?: Deliver, results?: Context_Array) {
+        const {byte_offset = 0, little_endian = this.little_endian, context} = options;
+        if (results === undefined) {
+            results = [];
+            results[Symbol.Context_Parent] = context;
+        }
+        let offset = 0;
+
+        const repeats = typeof this.repeat === "number" ? this.repeat : this.repeat(context);
+        for (let count = 0; count < repeats; count++) {
+            for (const item of this) {
+                const {data, size} = item.parse(data_view,
+                                                {byte_offset: byte_offset + offset, little_endian, context: results},
+                                                (data) => results!.push(data));
+                offset += size;
+            }
+        }
+        if (this.decode !== undefined) {
+            results = this.decode(results, context);
+        }
+        if (deliver !== undefined) {
+            deliver(results);
+        }
+        return {data: results, size: offset};
+    }
+}
+
+/* This would be much cleaner if JavaScript had interfaces. Or I could make everything subclass Struct... */
+const extract_array_options = (elements: Array<Struct | Array_Options>) => {
+
+    const options: Array_Options = {};
+    if (elements.length > 0) {
         const first = elements[0];
         if (!first.hasOwnProperty('pack') && !first.hasOwnProperty('parse')) {
             Object.assign(options, first);
             elements.shift();
         }
-        if (elements.length > 0 && typeof elements[elements.length-1] !== "symbol") {
+        if (elements.length > 0) {
             const last = elements[elements.length-1];
             if (!last.hasOwnProperty('pack') && !last.hasOwnProperty('parse')) {
                 Object.assign(options, last);
@@ -289,113 +364,77 @@ const _extract_options = (elements: Array<Struct | Transcoders<any[]>>) => {
     return options;
 };
 
-export const Byte_Array = (...elements: Array<Struct | Transcoders<any[]>>): Byte_Array_Class => {
-    const options = _extract_options(elements);
+export const Byte_Array = (...elements: Array<Struct | Array_Options>) => {
+    const options = extract_array_options(elements);
     return new Byte_Array_Class(options, ...elements as Struct[]);
 };
 
-type Repeats = number | ((context?: Context) => number);
-
-class Repeat_Class extends Byte_Array_Class {
-    repeat: Repeats;
-    constructor(repeat: Repeats, options: Transcoders<any[]>, ...elements: Struct[]) {
-        super(options, ...elements);
-        this.repeat = repeat;
-    }
-
-    parse({data_view, byte_offset = 0, little_endian = this.little_endian, context}: Parse_Options) {
-        let offset = 0;
-        let array: Context_Array = [];
-        array[Symbol.Parent] = context;
-
-        const decode = this.decode;
-        this.decode = undefined;
-
-        let count = 0;
-        const repeats = typeof this.repeat === "number" ? this.repeat : this.repeat(context);
-        while (count < repeats) {
-            const {data, size} = super.parse({data_view, byte_offset: byte_offset + offset, little_endian, context: array});
-            array.push(...data);
-            offset += size;
-            count++;
-        }
-
-        this.decode = decode;
-
-        if (this.decode !== undefined) {
-            array = this.decode(array, context);
-        }
-        return {data: array, size: offset};
-    }
-
-    pack(data: any, options: Pack_Options = {}, index = 0) {
-        let {data_view, byte_offset = 0, little_endian, context = data} = options;
-        let offset = 0;
-        const packed: Packed[] = [];
-        let size, buffer;
-
-        let count = 0;
-        const repeats = typeof this.repeat === "number" ? this.repeat : this.repeat(context);
-        while (count < repeats) {
-            ({size, buffer, index} = super.pack(data, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context}, index));
-            if (data_view === undefined) {
-                packed.push({size, buffer});
-            }
-            offset += size;
-            count++;
-        }
-
-        if (data_view === undefined) {
-            data_view = new DataView(new ArrayBuffer(Math.ceil(offset)));
-            Byte_Array_Class.concat_buffers(packed, data_view);
-        }
-
-        return {size: offset, buffer: data_view.buffer, index}
-    }
-}
-
-export const Repeat = (repeat: Repeats, ...elements: Array<Struct | Transcoders<any[]>>): Repeat_Class => {
-    const options = _extract_options(elements);
+export const Repeat = (repeat: Repeats, ...elements: Array<Struct | Array_Options>) => {
+    const options = extract_array_options(elements);
     return new Repeat_Class(repeat, options, ...elements as Struct[]);
 };
 
-/* Keys must all ultimately be strings for safe conversion of Map into Object */
-interface Byte_Map_Class extends Struct, Transcoders<Map<string, any>>, Map<string, Struct> {}
+export type Byte_Map = Map<string, Primatives>;
+type Map_Options = Transcoders<Byte_Map>;
+type Map_Iterable = Array<[string, Struct]>;
+
+interface Byte_Map_Class extends Struct, Map_Options, Map<string, Struct> {}
 
 class Byte_Map_Class extends Map<string, Struct> {
-    constructor({encode, decode = default_decoder, little_endian}: Transcoders<Map<string, any>>, iterable?: Array<[string, Struct]>) {
+    constructor({encode, decode, little_endian}: Map_Options, iterable?: Map_Iterable) {
         super(iterable);
         this.encode = encode;
         this.decode = decode;
         this.little_endian = little_endian;
     }
 
-    parse({data_view, byte_offset = 0, little_endian = this.little_endian, context}: Parse_Options) {
+    pack(data: any, options: Pack_Options = {}, fetch?: Fetch) {
+        let {data_view, byte_offset = 0, little_endian = this.little_endian, context = data} = options;
+        if (fetch !== undefined) {
+            data = fetch(data);
+        }
+        if (this.encode !== undefined) {
+            data = this.encode(data, context);
+        }
+        const packed: Packed[] = [];
         let offset = 0;
-        let map: Context_Object = new Map();
-        map[Symbol.Parent] = context;
-
-        for (const [key, value] of this) {
-            let {data, size} = value.parse({data_view, byte_offset: byte_offset + offset, little_endian, context: map});
-            offset += size;
-            if (typeof data === 'symbol') {
-                data = embed.pop(data);
-                map.update(data);
-            } else {
-                map.set(key, data);
+        for (const [key, item] of this) {
+            const {size, buffer} = item.pack(data,
+                                             {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context},
+                                             (data) => data[key]);
+            if (data_view === undefined) {
+                packed.push({size, buffer});
             }
+            offset += size;
         }
+        if (data_view === undefined) {
+            data_view = concat_buffers(packed, offset);
+        }
+        return {size: offset, buffer: data_view.buffer};
+    }
 
+    parse(data_view: DataView, options: Parse_Options = {}, deliver?: Deliver, results?: Context_Map) {
+        const {byte_offset = 0, little_endian = this.little_endian, context} = options;
+        if (results === undefined) {
+            results = new Map();
+            results[Symbol.Context_Parent] = context;
+        }
+        let offset = 0;
+        for (const [key, item] of this) {
+            const {data, size} = item.parse(data_view,
+                                              {byte_offset: byte_offset + offset, little_endian, context: results},
+                                              (data) => results!.set(key, data));
+            offset += size;
+        }
         if (this.decode !== undefined) {
-            map = this.decode(map, context);
+            results = this.decode(results, context);
         }
-
-        return {data: map, size: offset};
+        if (deliver !== undefined) {
+            deliver(results);
+        }
+        return {data: results, size: offset};
     }
 }
-
-type Map_Options = Transcoders<Map<string, any>>;
-type Map_Iterable = Array<[string, Struct]>;
 
 export const Byte_Map = (options?: Map_Options | Map_Iterable, iterable?: Map_Iterable | Map_Options) => {
     if (options instanceof Array) {
@@ -403,8 +442,5 @@ export const Byte_Map = (options?: Map_Options | Map_Iterable, iterable?: Map_It
         iterable = options;
         options = _;
     }
-    if (options === undefined) {
-        options = {};
-    }
-    return new Byte_Map_Class(options as Map_Options, iterable as Map_Iterable);
+    return new Byte_Map_Class(options as Map_Options || {} , iterable as Map_Iterable);
 };
