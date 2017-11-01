@@ -153,6 +153,65 @@ class Byte_Array_Class extends Array {
         return { data: results, size: offset };
     }
 }
+class Repeat_Class extends Byte_Array_Class {
+    constructor(repeat, options, ...elements) {
+        super(options, ...elements);
+        this.repeat = repeat;
+    }
+    /* Basically copy & pasted from Byte_Array_Class with stuff added in the middle. */
+    pack(data, options = {}, fetch, fetcher) {
+        let { data_view, byte_offset = 0, little_endian = this.little_endian, context = data } = options;
+        const repeats = typeof this.repeat === "number" ? this.repeat : this.repeat(context);
+        if (fetch !== undefined) {
+            data = fetch(data);
+        }
+        if (this.encode !== undefined) {
+            data = this.encode(data, context);
+        }
+        let offset = 0;
+        const packed = [];
+        if (fetcher === undefined) {
+            const iterator = data[Symbol.iterator]();
+            fetcher = () => iterator.next().value;
+        }
+        for (let count = 0; count < repeats; count++) {
+            for (const item of this) {
+                const { size, buffer } = item.pack(data, { data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context }, fetcher);
+                if (data_view === undefined) {
+                    packed.push({ size, buffer });
+                }
+                offset += size;
+            }
+        }
+        if (data_view === undefined) {
+            data_view = concat_buffers(packed, offset);
+        }
+        return { size: offset, buffer: data_view.buffer };
+    }
+    /* Basically copy & pasted from Byte_Array_Class with stuff added in the middle. */
+    parse(data_view, options = {}, deliver, results) {
+        const { byte_offset = 0, little_endian = this.little_endian, context } = options;
+        if (results === undefined) {
+            results = [];
+            results[Symbol.Context_Parent] = context;
+        }
+        let offset = 0;
+        const repeats = typeof this.repeat === "number" ? this.repeat : this.repeat(context);
+        for (let count = 0; count < repeats; count++) {
+            for (const item of this) {
+                const { data, size } = item.parse(data_view, { byte_offset: byte_offset + offset, little_endian, context: results }, (data) => results.push(data));
+                offset += size;
+            }
+        }
+        if (this.decode !== undefined) {
+            results = this.decode(results, context);
+        }
+        if (deliver !== undefined) {
+            deliver(results);
+        }
+        return { data: results, size: offset };
+    }
+}
 /* This would be much cleaner if JavaScript had interfaces. Or I could make everything subclass Struct... */
 const extract_array_options = (elements) => {
     const options = {};
@@ -175,6 +234,10 @@ const extract_array_options = (elements) => {
 export const Byte_Array = (...elements) => {
     const options = extract_array_options(elements);
     return new Byte_Array_Class(options, ...elements);
+};
+export const Repeat = (repeat, ...elements) => {
+    const options = extract_array_options(elements);
+    return new Repeat_Class(repeat, options, ...elements);
 };
 class Byte_Map_Class extends Map {
     constructor({ encode, decode, little_endian }, iterable) {

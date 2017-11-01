@@ -23,11 +23,11 @@ type Primatives = number | string;
 /* Need to hang Context_Parent off the global Symbol because of Typescript deficiency */
 Symbol.Context_Parent = Symbol.for("Context_Parent");
 
-interface Context_Map extends Map<string, any>{
+export interface Context_Map extends Map<string, any>{
     [Symbol.Context_Parent]?: Context;
 }
 
-interface Context_Array extends Array<any> {
+export interface Context_Array extends Array<any> {
     [Symbol.Context_Parent]?: Context;
 }
 
@@ -75,8 +75,6 @@ interface Packed {
 interface Packer {
     (data: any, options?: Pack_Options, fetch?: Fetch): Packed;
 }
-
-type Destination = Map<string, any> | Array<any>;
 
 interface Deliver {
     (data: any): void;

@@ -1,4 +1,4 @@
-# declarative_binary_parser
+# declarative_binary_serialization
 Does what it says on the tin.
 
 ## Example

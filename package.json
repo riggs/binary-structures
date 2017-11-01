@@ -1,6 +1,6 @@
 {
   "name": "declarative_binary_serialization",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Does what it says on the tin.",
   "main": "index.js",
   "directories": {
