@@ -2,7 +2,7 @@
   "name": "declarative_binary_serialization",
   "version": "1.0.0",
   "description": "Does what it says on the tin.",
-  "main": "index.js",
+  "main": "dist/index.js",
   "directories": {
     "test": "__test__"
   },
