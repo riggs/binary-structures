@@ -1,0 +1,11 @@
+export { Context_Array, Context_Map, Encoder, Decoder, inspect, Bits, Uint, Int, Float, Utf8, Embed, Byte_Array, Byte_Map, Repeat, Branch } from './transcode';
+import { Struct, Transcoders } from './transcode';
+export declare const Uint8: (transcoders?: Transcoders<number> | undefined) => Struct;
+export declare const Uint16: (transcoders?: Transcoders<number> | undefined) => Struct;
+export declare const Uint32: (transcoders?: Transcoders<number> | undefined) => Struct;
+export declare const Uint64: (transcoders?: Transcoders<number> | undefined) => Struct;
+export declare const Int8: (transcoders?: Transcoders<number> | undefined) => Struct;
+export declare const Int16: (transcoders?: Transcoders<number> | undefined) => Struct;
+export declare const Int32: (transcoders?: Transcoders<number> | undefined) => Struct;
+export declare const Float32: (transcoders?: Transcoders<number> | undefined) => Struct;
+export declare const Float64: (transcoders?: Transcoders<number> | undefined) => Struct;

@@ -20,7 +20,7 @@ export const Float_Sizes = [32, 64];
 
 export type Size = number;
 
-interface Serialization_Options {
+export interface Serialization_Options {
     bits: Size;
     byte_offset?: number;
     data_view: DataView;

@@ -1,5 +1,4 @@
 import { Bits_Sizes, Uint_Sizes, Int_Sizes, Float_Sizes, uint_pack, int_pack, float_pack, uint_parse, int_parse, float_parse, utf8_pack, utf8_parse } from './serialization';
-import './improved_map';
 /* Need to hang Context_Parent off the global Symbol because of Typescript deficiency */
 Symbol.Context_Parent = Symbol.for("Context_Parent");
 export const inspect_transcoder = (data, context) => {
@@ -100,7 +99,7 @@ const concat_buffers = (packed, byte_length) => {
     }
     return data_view;
 };
-class Byte_Array_Class extends Array {
+export class Byte_Array_Class extends Array {
     constructor({ encode, decode, little_endian }, ...elements) {
         super(...elements);
         this.encode = encode;
@@ -153,7 +152,7 @@ class Byte_Array_Class extends Array {
         return { data: results, size: offset };
     }
 }
-class Repeat_Class extends Byte_Array_Class {
+export class Repeat_Class extends Byte_Array_Class {
     constructor(repeat, options, ...elements) {
         super(options, ...elements);
         this.repeat = repeat;
@@ -239,7 +238,7 @@ export const Repeat = (repeat, ...elements) => {
     const options = extract_array_options(elements);
     return new Repeat_Class(repeat, options, ...elements);
 };
-class Byte_Map_Class extends Map {
+export class Byte_Map_Class extends Map {
     constructor({ encode, decode, little_endian }, iterable) {
         super(iterable);
         this.encode = encode;

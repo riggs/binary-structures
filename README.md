@@ -1,4 +1,4 @@
-# declarative_binary_serialization
+# declarative-binary-serialization
 Does what it says on the tin.
 
 ## Example
@@ -16,7 +16,7 @@ let report = Byte_Map({little_endian: true})
 ```
 
 
-### API
-##### Bits(size\[, {encode?, decode?}])
+## API
+### Bits(size\[, {encode?, decode?}])
 
-##### Uint(size\[, {encode?, decode?, little_endian?}])
+### Uint(size\[, {encode?, decode?, little_endian?}])

@@ -16,7 +16,7 @@ import {
     utf8_parse
 } from './serialization';
 
-type Primatives = number | string;
+export type Primatives = number | string;
 
 /* Need to hang Context_Parent off the global Symbol because of Typescript deficiency */
 Symbol.Context_Parent = Symbol.for("Context_Parent");
@@ -29,13 +29,13 @@ export interface Context_Array extends Array<any> {
     [Symbol.Context_Parent]?: Context;
 }
 
-type Context = Context_Map | Context_Array;
+export type Context = Context_Map | Context_Array;
 
 /* These functions provided by library consumer to convert data to usable structures. */
 export type Encoder<T> = (data: any, context?: any) => T;
 export type Decoder<T> = (data: T, context?: Context) => any;
 
-interface Transcoders<T> {
+export interface Transcoders<T> {
     encode?: Encoder<T>;
     decode?: Decoder<T>;
     little_endian?: boolean;
@@ -51,47 +51,47 @@ export const inspect = {
     decode: inspect_transcoder,
 };
 
-interface Parse_Options {
+export interface Parse_Options {
     byte_offset?: number;
     little_endian?: boolean | undefined;
     context?: Context;
 }
 
-interface Pack_Options extends Parse_Options {
+export interface Pack_Options extends Parse_Options {
     data_view?: DataView;
 }
 
-interface Fetch {
+export interface Fetch {
     (data: any): any;
 }
 
-interface Packed {
+export interface Packed {
     size: Size;
     buffer: ArrayBuffer;
 }
 
-interface Packer {
+export interface Packer {
     (data: any, options?: Pack_Options, fetch?: Fetch): Packed;
 }
 
-interface Deliver {
+export interface Deliver {
     (data: any): void;
 }
 
-interface Parsed {
+export interface Parsed {
     data: any;
     size: Size; /* In Bytes */
 }
 
-interface Parser {
+export interface Parser {
     (data_view: DataView, options?: Parse_Options, deliver?: Deliver): Parsed;
 }
-interface Struct {
+export interface Struct {
     pack: Packer;
     parse: Parser;
 }
 
-interface Bytes<T> {
+export interface Bytes<T> {
     (size: number, transcoders?: Transcoders<T>): Struct;
 }
 
@@ -142,8 +142,8 @@ export const Float: Bytes<number> = bakery(float_pack, float_parse, (s) => Float
 
 export const Utf8: Bytes<string> = bakery(utf8_pack, utf8_parse, (s) => s % 8 === 0 && s >= 0);
 
-type Chooser = (context?: Context) => number | string;
-interface Choices {
+export type Chooser = (context?: Context) => number | string;
+export interface Choices {
     [choice: number]: Struct;
     [choice: string]: Struct;
 }
@@ -203,11 +203,11 @@ const concat_buffers = (packed: Packed[], byte_length: number) => {
 };
 
 export type Byte_Array = Array<Primatives>;
-type Array_Options = Transcoders<Byte_Array>;
+export type Array_Options = Transcoders<Byte_Array>;
 
-interface Byte_Array_Class extends Struct, Array_Options, Array<Struct> {}
+export interface Byte_Array_Class extends Struct, Array_Options, Array<Struct> {}
 
-class Byte_Array_Class extends Array<Struct> {
+export class Byte_Array_Class extends Array<Struct> {
     constructor({encode, decode, little_endian}: Array_Options, ...elements: Struct[]) {
         super(...elements);
         this.encode = encode;
@@ -268,9 +268,9 @@ class Byte_Array_Class extends Array<Struct> {
     }
 }
 
-type Repeats = number | ((context?: Context) => number);
+export type Repeats = number | ((context?: Context) => number);
 
-class Repeat_Class extends Byte_Array_Class {
+export class Repeat_Class extends Byte_Array_Class {
     repeat: Repeats;
 
     constructor(repeat: Repeats, options: Array_Options, ...elements: Struct[]) {
@@ -371,12 +371,12 @@ export const Repeat = (repeat: Repeats, ...elements: Array<Struct | Array_Option
 };
 
 export type Byte_Map = Map<string, Primatives>;
-type Map_Options = Transcoders<Byte_Map>;
-type Map_Iterable = Array<[string, Struct]>;
+export type Map_Options = Transcoders<Byte_Map>;
+export type Map_Iterable = Array<[string, Struct]>;
 
-interface Byte_Map_Class extends Struct, Map_Options, Map<string, Struct> {}
+export interface Byte_Map_Class extends Struct, Map_Options, Map<string, Struct> {}
 
-class Byte_Map_Class extends Map<string, Struct> {
+export class Byte_Map_Class extends Map<string, Struct> {
     constructor({encode, decode, little_endian}: Map_Options, iterable?: Map_Iterable) {
         super(iterable);
         this.encode = encode;

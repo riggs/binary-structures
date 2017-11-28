@@ -1,8 +1,9 @@
 {
-  "name": "declarative_binary_serialization",
-  "version": "1.0.0",
+  "name": "declarative-binary-serialization",
+  "version": "0.5.2",
   "description": "Does what it says on the tin.",
-  "main": "dist/index.js",
+  "main": "./dist/index.js",
+  "typings": "./typings/index.d.ts",
   "directories": {
     "test": "__test__"
   },
@@ -29,7 +30,7 @@
     "globals": {
       "ts-jest": {
         "skipBabel": true,
-        "tsConfigFile": "__test__/tsconfig.json"
+        "tsConfigFile": "./__test__/tsconfig.json"
       }
     },
     "transform": {
@@ -46,12 +47,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/riggs/declarative_binary_serialization.git"
+    "url": "git+https://github.com/riggs/declarative-binary-serialization.git"
   },
   "author": "Benjamin Riggs (https://github.com/riggs/)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/riggs/declarative_binary_serialization/issues"
+    "url": "https://github.com/riggs/declarative-binary-serialization/issues"
   },
-  "homepage": "https://github.com/riggs/declarative_binary_serialization#readme"
+  "homepage": "https://github.com/riggs/declarative-binary-serialization#readme"
 }
