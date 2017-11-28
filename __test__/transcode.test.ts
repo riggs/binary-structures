@@ -1,3 +1,5 @@
+import 'improved_map';
+
 import {Context_Array, Context_Map, Encoder, Decoder, inspect, Bits, Uint, Int, Float, Utf8, Embed, Byte_Array, Byte_Map, Repeat, Branch} from '../src/transcode';
 
 const map_decode: Decoder<Byte_Map> = (data) => data.toObject();
@@ -17,7 +19,99 @@ describe("Bits", () => {
 });
 describe("Uint", () => {
     test("simplest parse cases", () => {
-
+        const data_view = new DataView(new ArrayBuffer(4));
+        data_view.setUint8(0, 6);
+        expect(Uint(8).parse(data_view)).toEqual({data: 6, size: 1});
+        data_view.setUint16(0, 8128);
+        expect(Uint(16).parse(data_view)).toEqual({data: 8128, size: 2});
+        data_view.setUint32(0, 33550336);
+        expect(Uint(32).parse(data_view)).toEqual({data: 33550336, size: 4});
+    });
+    test("parsing endianness", () => {
+        const data_view = new DataView(new ArrayBuffer(4));
+        const little_endian = true;
+        data_view.setUint16(0, 8128, little_endian);
+        expect(Uint(16, {little_endian}).parse(data_view)).toEqual({data: 8128, size: 2});
+        data_view.setUint32(0, 33550336, little_endian);
+        expect(Uint(32).parse(data_view, {little_endian})).toEqual({data: 33550336, size: 4});
+    });
+    test("Uint64 parsing", () => {
+        const now = Date.now();
+        const lower = now % 2 ** 32;
+        const upper = Math.floor(now / 2 ** 32);
+        const data_view = new DataView(new Uint32Array([lower, upper]).buffer);
+        expect(Uint(64, {little_endian: true}).parse(data_view)).toEqual({data: now, size: 8});
+        data_view.setUint32(0, upper);
+        data_view.setUint32(4, lower);
+        expect(Uint(64).parse(data_view)).toEqual({data: now, size: 8});
+    });
+    describe("given data_view", () => {
+        test("simplest pack case", () => {
+            const data_view = new DataView(new ArrayBuffer(4));
+            Uint(8).pack(6, {data_view});
+            expect(data_view.getUint8(0)).toEqual(6);
+            Uint(16).pack(8128, {data_view});
+            expect(data_view.getUint16(0)).toEqual(8128);
+            Uint(32).pack(33550336, {data_view});
+            expect(data_view.getUint32(0)).toEqual(33550336);
+        });
+        test("packing endianness", () => {
+            const data_view = new DataView(new ArrayBuffer(4));
+            const little_endian = true;
+            Uint(16, {little_endian}).pack(8128, {data_view});
+            expect(data_view.getUint16(0, little_endian)).toEqual(8128);
+            Uint(32).pack(33550336, {little_endian, data_view});
+            expect(data_view.getUint32(0, little_endian)).toEqual(33550336);
+        });
+        test("Uint64 packing", () => {
+            const now = Date.now();
+            const lower = now % 2 ** 32;
+            const upper = Math.floor(now / 2 ** 32);
+            const data_view = new DataView(new ArrayBuffer(8));
+            Uint(64, {little_endian: true}).pack(now, {data_view});
+            expect(Array.from(new Uint32Array(data_view.buffer))).toEqual([lower, upper]);
+            Uint(64).pack(now, {data_view});
+            expect(data_view.getUint32(0)).toEqual(upper);
+            expect(data_view.getUint32(4)).toEqual(lower);
+        });
+    });
+    describe("without data_view given", () => {
+        test("simplest pack case", () => {
+            let size, buffer;
+            ({size, buffer} = Uint(8).pack(6));
+            expect(size).toEqual(1);
+            expect(new DataView(buffer).getUint8(0)).toEqual(6);
+            ({size, buffer} = Uint(16).pack(8128));
+            expect(size).toEqual(2);
+            expect(new DataView(buffer).getUint16(0)).toEqual(8128);
+            ({size, buffer} = Uint(32).pack(33550336));
+            expect(size).toEqual(4);
+            expect(new DataView(buffer).getUint32(0)).toEqual(33550336);
+        });
+        test("packing endianness", () => {
+            let size, buffer;
+            const little_endian = true;
+            ({size, buffer} = Uint(16, {little_endian}).pack(8128));
+            expect(size).toEqual(2);
+            expect(new DataView(buffer).getUint16(0, little_endian)).toEqual(8128);
+            ({size, buffer} = Uint(32).pack(33550336, {little_endian}));
+            expect(size).toEqual(4);
+            expect(new DataView(buffer).getUint32(0, little_endian)).toEqual(33550336);
+        });
+        test("Uint64 packing", () => {
+            let size, buffer;
+            const now = Date.now();
+            const lower = now % 2 ** 32;
+            const upper = Math.floor(now / 2 ** 32);
+            ({size, buffer} = Uint(64, {little_endian: true}).pack(now));
+            expect(size).toEqual(8);
+            expect(Array.from(new Uint32Array(buffer))).toEqual([lower, upper]);
+            ({size, buffer} = Uint(64).pack(now));
+            expect(size).toEqual(8);
+            const data_view = new DataView(buffer);
+            expect(data_view.getUint32(0)).toEqual(upper);
+            expect(data_view.getUint32(4)).toEqual(lower);
+        });
     });
 });
 describe("Branch", () => {
@@ -41,10 +135,10 @@ describe("Byte_Array parsing", () => {
         const lower = now % 2 ** 32;
         const upper = Math.floor(now / 2 ** 32);
         const data_view = new DataView(new Uint32Array([lower, upper]).buffer);
-        let byte_array = Byte_Array({decode, little_endian: true}, Uint(64));
+        const byte_array = Byte_Array({decode, little_endian: true}, Uint(64));
         expect(byte_array.parse(data_view)).toEqual({data: [now], size: 8});
-        byte_array = Byte_Array({decode}, Uint(64, {little_endian: true}));
-        expect(byte_array.parse(data_view)).toEqual({data: [now], size: 8});
+        byte_array.little_endian = false;
+        expect(byte_array.parse(data_view, {little_endian: true})).toEqual({data: [now], size: 8});
     });
     test("embedded arrays", () => {
         const data_view = new DataView(new Uint8Array([0, 1, 2, 3]).buffer);

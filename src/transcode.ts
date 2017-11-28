@@ -16,8 +16,6 @@ import {
     utf8_parse
 } from './serialization';
 
-import './improved_map';
-
 type Primatives = number | string;
 
 /* Need to hang Context_Parent off the global Symbol because of Typescript deficiency */
