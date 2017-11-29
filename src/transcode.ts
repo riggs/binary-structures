@@ -186,8 +186,11 @@ export const Embed = (thing: Byte_Array_Class | Byte_Map_Class | Struct): Struct
     return {pack, parse}
 };
 
-export const Padding = ({bits = 0, bytes = 0}): Struct => {
-    const size = bits / 8 + bytes;
+export const Padding = (size: any = 0): Struct => {
+    if (typeof size === 'object') {
+        let {bits = 0, bytes = 0} = size;
+        size = bits / 8 + bytes;
+    }
     if(size < 0) {
         throw new Error(`Invalid size: ${size} bytes`);
     }

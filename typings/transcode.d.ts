@@ -72,10 +72,7 @@ export interface Choices {
 }
 export declare const Branch: (choose: Chooser, choices: Choices) => Struct;
 export declare const Embed: (thing: Struct | Byte_Array_Class | Byte_Map_Class) => Struct;
-export declare const Padding: ({bits, bytes}: {
-    bits?: number;
-    bytes?: number;
-}) => Struct;
+export declare const Padding: (size?: any) => Struct;
 export declare type Byte_Array = Array<Primatives>;
 export declare type Array_Options = Transcoders<Byte_Array>;
 export interface Byte_Array_Class extends Struct, Array_Options, Array<Struct> {

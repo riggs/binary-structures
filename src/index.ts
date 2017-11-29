@@ -13,10 +13,11 @@ export {
     Byte_Array,
     Byte_Map,
     Repeat,
-    Branch
+    Branch,
+    Padding
 } from './transcode';
 
-import {Uint, Int, Float, Struct, Transcoders} from './transcode';
+import {Uint, Int, Float, Padding, Struct} from './transcode';
 
 export const Uint8 = Uint(8);
 export const Uint16 = Uint(16);
@@ -29,3 +30,9 @@ export const Int32 = Int(32);
 
 export const Float32 = Float(32);
 export const Float64 = Float(64);
+
+/** Noöp structure
+ *
+ * @type {Struct}
+ */
+export const Pass = Padding();

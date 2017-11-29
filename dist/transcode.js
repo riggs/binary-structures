@@ -79,8 +79,11 @@ export const Embed = (thing) => {
     };
     return { pack, parse };
 };
-export const Padding = ({ bits = 0, bytes = 0 }) => {
-    const size = bits / 8 + bytes;
+export const Padding = (size = 0) => {
+    if (typeof size === 'object') {
+        let { bits = 0, bytes = 0 } = size;
+        size = bits / 8 + bytes;
+    }
     if (size < 0) {
         throw new Error(`Invalid size: ${size} bytes`);
     }
