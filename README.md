@@ -1,6 +1,8 @@
 # declarative-binary-serialization
 Does what it says on the tin.
 
+It works, I just need to write more tests and document it.
+
 ## Example
 ```
 let report = Byte_Map({little_endian: true})

@@ -1,6 +1,6 @@
 {
   "name": "declarative-binary-serialization",
-  "version": "0.5.2",
+  "version": "0.9.0",
   "description": "Does what it says on the tin.",
   "main": "./dist/index.js",
   "typings": "./typings/index.d.ts",
