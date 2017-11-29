@@ -61,6 +61,9 @@ export interface Pack_Options extends Parse_Options {
     data_view?: DataView;
 }
 
+/** A function to fetch the data to be packed.
+ *  It is provided by the code handling the data input and called by the packer function to fetch the data to pack.
+ */
 export interface Fetch {
     (data: any): any;
 }
@@ -74,6 +77,9 @@ export interface Packer {
     (data: any, options?: Pack_Options, fetch?: Fetch): Packed;
 }
 
+/** A function to deliver the parsed result to the correct place.
+ *  It is provided by the code managing the results container and called by the parser function with the parsed data.
+ */
 export interface Deliver {
     (data: any): void;
 }
@@ -158,7 +164,7 @@ export const Branch = (choose: Chooser, choices: Choices): Struct => {
     return {parse, pack};
 };
 
-export const Embed: ((thing: Byte_Array_Class | Byte_Map_Class | Struct) => Struct) = (thing) => {
+export const Embed = (thing: Byte_Array_Class | Byte_Map_Class | Struct): Struct => {
     const pack: Packer = (data, options, fetch) => {
         if (thing instanceof Byte_Array_Class) {
             return thing.pack(data, options, undefined, fetch);
@@ -180,6 +186,20 @@ export const Embed: ((thing: Byte_Array_Class | Byte_Map_Class | Struct) => Stru
     return {pack, parse}
 };
 
+export const Padding = ({bits = 0, bytes = 0}): Struct => {
+    const size = bits / 8 + bytes;
+    if(size < 0) {
+        throw new Error(`Invalid size: ${size} bytes`);
+    }
+    const pack: Packer = (data, options, fetch) => {
+        return {size, buffer: new ArrayBuffer(Math.ceil(size))}
+    };
+    const parse: Parser = (data_view, options = {}, deliver) => {
+        return {size, data: null};
+    };
+    return {pack, parse}
+};
+
 const concat_buffers = (packed: Packed[], byte_length: number) => {
     const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
     let _offset = 0;
@@ -187,7 +207,7 @@ const concat_buffers = (packed: Packed[], byte_length: number) => {
         /* Copy all the data from the returned buffers into one grand buffer. */
         const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer));
         /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
-        const array = [];
+        const array = Byte_Array();
         for (let i = 0; i < Math.floor(size); i++) {
             array.push(Uint(8));
         }
@@ -195,7 +215,7 @@ const concat_buffers = (packed: Packed[], byte_length: number) => {
             array.push(Bits((size % 1) * 8));
         }
         /* Pack the bytes into the buffer */
-        Byte_Array(...array).pack(bytes, {data_view, byte_offset: _offset});
+        array.pack(bytes, {data_view, byte_offset: _offset});
 
         _offset += size;
     }

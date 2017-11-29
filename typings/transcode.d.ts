@@ -27,6 +27,9 @@ export interface Parse_Options {
 export interface Pack_Options extends Parse_Options {
     data_view?: DataView;
 }
+/** A function to fetch the data to be packed.
+ *  It is provided by the code handling the data input and called by the packer function to fetch the data to pack.
+ */
 export interface Fetch {
     (data: any): any;
 }
@@ -37,6 +40,9 @@ export interface Packed {
 export interface Packer {
     (data: any, options?: Pack_Options, fetch?: Fetch): Packed;
 }
+/** A function to deliver the parsed result to the correct place.
+ *  It is provided by the code managing the results container and called by the parser function with the parsed data.
+ */
 export interface Deliver {
     (data: any): void;
 }
@@ -65,7 +71,11 @@ export interface Choices {
     [choice: string]: Struct;
 }
 export declare const Branch: (choose: Chooser, choices: Choices) => Struct;
-export declare const Embed: ((thing: Byte_Array_Class | Byte_Map_Class | Struct) => Struct);
+export declare const Embed: (thing: Struct | Byte_Array_Class | Byte_Map_Class) => Struct;
+export declare const Padding: ({bits, bytes}: {
+    bits?: number;
+    bytes?: number;
+}) => Struct;
 export declare type Byte_Array = Array<Primatives>;
 export declare type Array_Options = Transcoders<Byte_Array>;
 export interface Byte_Array_Class extends Struct, Array_Options, Array<Struct> {

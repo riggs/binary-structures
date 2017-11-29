@@ -1,6 +1,23 @@
 import 'improved_map';
 
-import {Context_Array, Context_Map, Encoder, Decoder, inspect, Bits, Uint, Int, Float, Utf8, Embed, Byte_Array, Byte_Map, Repeat, Branch} from '../src/transcode';
+import {
+    Context_Array,
+    Context_Map,
+    Encoder,
+    Decoder,
+    inspect,
+    Bits,
+    Uint,
+    Int,
+    Float,
+    Utf8,
+    Embed,
+    Byte_Array,
+    Byte_Map,
+    Repeat,
+    Branch,
+    Padding
+} from '../src/transcode';
 
 const map_decode: Decoder<Byte_Map> = (data) => data.toObject();
 const array_decode: Decoder<Byte_Array> = (data) => Array.from(data);
@@ -115,12 +132,29 @@ describe("Uint", () => {
     });
 });
 describe("Branch", () => {
-    test("branch.parse", () => {
+    test("parsing", () => {
         const data_view = new DataView(new Uint8Array([1, 0xAB, 0xCD]).buffer);
         const byte_array = Byte_Array(Uint(8), Branch((context: Context_Array) => context[0], {1: Uint(16, {little_endian: true}), 2: Uint(16)}), {decode: array_decode});
         expect(byte_array.parse(data_view)).toEqual({data: [1, 0xCDAB], size: 3});
         data_view.setUint8(0, 2);
         expect(byte_array.parse(data_view)).toEqual({data: [2, 0xABCD], size: 3});
+    });
+});
+describe("Padding", () => {
+    test("parsing", () => {
+        const data_view = new DataView(new Uint8Array([1, 0, 0xAA]).buffer);
+        const byte_array = Byte_Array(Uint(8), Padding({bytes: 1}), Uint(8), {decode: array_decode});
+        expect(byte_array.parse(data_view)).toEqual({data: [1, 0xAA], size: 3});
+        byte_array[1] = Padding({bytes: 1, bits: 4});
+        byte_array[2] = Bits(4);
+        expect(byte_array.parse(data_view)).toEqual({data: [1, 0xA], size: 3});
+    });
+    test("packing", () => {
+        const byte_array = Byte_Array(Uint(8), Padding({bytes: 1, bits: 4}), Bits(4), Uint(8));
+        const data_view = new DataView(new ArrayBuffer(4));
+        const {size, buffer} = byte_array.pack([1, 0xA, 2], {data_view});
+        expect(size).toEqual(4);
+        expect(Array.from(new Uint8Array(buffer))).toEqual([1, 0, 0xA0, 2]);
     });
 });
 describe("Byte_Array parsing", () => {

@@ -79,6 +79,19 @@ export const Embed = (thing) => {
     };
     return { pack, parse };
 };
+export const Padding = ({ bits = 0, bytes = 0 }) => {
+    const size = bits / 8 + bytes;
+    if (size < 0) {
+        throw new Error(`Invalid size: ${size} bytes`);
+    }
+    const pack = (data, options, fetch) => {
+        return { size, buffer: new ArrayBuffer(Math.ceil(size)) };
+    };
+    const parse = (data_view, options = {}, deliver) => {
+        return { size, data: null };
+    };
+    return { pack, parse };
+};
 const concat_buffers = (packed, byte_length) => {
     const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
     let _offset = 0;
@@ -86,7 +99,7 @@ const concat_buffers = (packed, byte_length) => {
         /* Copy all the data from the returned buffers into one grand buffer. */
         const bytes = Array.from(new Uint8Array(buffer));
         /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
-        const array = [];
+        const array = Byte_Array();
         for (let i = 0; i < Math.floor(size); i++) {
             array.push(Uint(8));
         }
@@ -94,7 +107,7 @@ const concat_buffers = (packed, byte_length) => {
             array.push(Bits((size % 1) * 8));
         }
         /* Pack the bytes into the buffer */
-        Byte_Array(...array).pack(bytes, { data_view, byte_offset: _offset });
+        array.pack(bytes, { data_view, byte_offset: _offset });
         _offset += size;
     }
     return data_view;

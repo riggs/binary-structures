@@ -18,14 +18,14 @@ export {
 
 import {Uint, Int, Float, Struct, Transcoders} from './transcode';
 
-export const Uint8 = (transcoders?: Transcoders<number>) => Uint(8, transcoders);
-export const Uint16 = (transcoders?: Transcoders<number>) => Uint(16, transcoders);
-export const Uint32 = (transcoders?: Transcoders<number>) => Uint(32, transcoders);
-export const Uint64 = (transcoders?: Transcoders<number>) => Uint(64, transcoders);
+export const Uint8 = Uint(8);
+export const Uint16 = Uint(16);
+export const Uint32 = Uint(32);
+export const Uint64 = Uint(64);
 
-export const Int8 = (transcoders?: Transcoders<number>) => Int(8, transcoders);
-export const Int16 = (transcoders?: Transcoders<number>) => Int(8, transcoders);
-export const Int32 = (transcoders?: Transcoders<number>) => Int(32, transcoders);
+export const Int8 = Int(8);
+export const Int16 = Int(8);
+export const Int32 = Int(32);
 
-export const Float32 = (transcoders?: Transcoders<number>) => Float(32, transcoders);
-export const Float64 = (transcoders?: Transcoders<number>) => Float(64, transcoders);
+export const Float32 = Float(32);
+export const Float64 = Float(64);
