@@ -20,8 +20,9 @@ import {
     Padding
 } from '../src/transcode';
 
-// const map_decode = <T>(data: Map<string, T>) => data.toObject();
-// const array_decode = <T>(data: Array<T>) => Array.from(data);
+// TODO: Group Array / Map into 'describe's
+// TODO: Test packing with insufficient input data
+// TODO: Test parsing with insufficient ArrayBuffer
 
 describe("Bits", () => {
     test("simplest parse cases", () => {

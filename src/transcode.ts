@@ -201,6 +201,7 @@ const numeric = (n: Numeric, context?: Parsed_Context): number => typeof n === '
 //     const {encode, decode} = transcoders;
 //     const pack: Packer<D> = (source_data, options, fetch) => {
 //
+//         const count = numeric(this.count, context);
 //     };
 //     const parse: Parser<D> = (data_view, options = {}, deliver) => {
 //         let {byte_offset = 0, little_endian = transcoders.little_endian, context} = options;
@@ -294,20 +295,22 @@ export class Byte_Map_Class<D, I> extends Map<string, Struct<I>> {
         this.little_endian = little_endian;
     }
 
-    pack<S>(data: any, options: Pack_Options = {}, fetch?: Fetch<S, D>) {
-        let {data_view, byte_offset = 0, little_endian = this.little_endian, context = data} = options;
-        if (fetch !== undefined) {
-            data = fetch(data);
-        }
-        if (this.encode !== undefined) {
-            data = this.encode(data, context);
-        }
+    pack<S>(source_data: S, options: Pack_Options = {}, fetch?: Fetch<S, D>) {
+        let {data_view, byte_offset = 0, little_endian = this.little_endian, context = source_data} = options;
+        const data = fetch_and_encode({source_data, fetch, encode: this.encode, context});
         const packed: Packed[] = [];
+        const fetcher = (key: string) => (source: Map<string, I>) => {
+               const value = source.get(key);
+               if (value === undefined) {
+                   throw new Error(`Insufficient data for serialization: ${source_data}`)
+               }
+               return value;
+        };
         let offset = 0;
         for (const [key, item] of this) {
             const {size, buffer} = item.pack(data,
                                              {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context},
-                                             (data) => data.get(key));
+                                             fetcher(key));
             if (data_view === undefined) {
                 packed.push({size, buffer});
             }
@@ -391,7 +394,13 @@ export class Byte_Array_Class<D, I> extends Array<Struct<I>> {
         const packed: Packed[] = [];
         if (fetcher === undefined) {
             const iterator = data[Symbol.iterator]();
-            fetcher = (source_data) => iterator.next().value;
+            fetcher = (source_data) => {
+                const value = iterator.next().value;
+                if (value === undefined) {
+                    throw new Error(`Insufficient data for serialization: ${source_data}`)
+                }
+                return value;
+            }
         }
         const store = (result: Packed) => {
             if (data_view === undefined) {
