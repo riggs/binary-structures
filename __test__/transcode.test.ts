@@ -1,6 +1,7 @@
 import 'improved_map';
 
 import {
+    SerializationError,
     Context_Array,
     Context_Map,
     Encoder,
@@ -19,8 +20,8 @@ import {
     Padding
 } from '../src/transcode';
 
-const map_decode: Decoder<Byte_Map> = (data) => data.toObject();
-const array_decode: Decoder<Byte_Array> = (data) => Array.from(data);
+// const map_decode = <T>(data: Map<string, T>) => data.toObject();
+// const array_decode = <T>(data: Array<T>) => Array.from(data);
 
 describe("Bits", () => {
     test("simplest parse cases", () => {
@@ -132,18 +133,30 @@ describe("Uint", () => {
     });
 });
 describe("Branch", () => {
-    test("parsing", () => {
-        const data_view = new DataView(new Uint8Array([1, 0xAB, 0xCD]).buffer);
-        const byte_array = Byte_Array(Uint(8), Branch((context: Context_Array) => context[0], {1: Uint(16, {little_endian: true}), 2: Uint(16)}), {decode: array_decode});
-        expect(byte_array.parse(data_view)).toEqual({data: [1, 0xCDAB], size: 3});
-        data_view.setUint8(0, 2);
-        expect(byte_array.parse(data_view)).toEqual({data: [2, 0xABCD], size: 3});
+    describe("parsing", () => {
+        test("simple case", () => {
+            const data_view = new DataView(new Uint8Array([1, 0xAB, 0xCD]).buffer);
+            const byte_array = Byte_Array(Uint(8), Branch((context: Context_Array) => context[0], {1: Uint(16, {little_endian: true}), 2: Uint(16)}));
+            expect(byte_array.parse(data_view)).toEqual({data: [1, 0xCDAB], size: 3});
+            data_view.setUint8(0, 2);
+            expect(byte_array.parse(data_view)).toEqual({data: [2, 0xABCD], size: 3});
+        });
+        test("default value", () => {
+            const data_view = new DataView(new Uint8Array([42, 0xAB, 0xCD]).buffer);
+            const byte_array = Byte_Array(Uint(8), Branch((context: Context_Array) => context[0], {1: Uint(16, {little_endian: true})}, Uint(16)));
+            expect(byte_array.parse(data_view)).toEqual({data: [42, 0xABCD], size: 3});
+        });
+        test("bad choice", () => {
+            const data_view = new DataView(new Uint8Array([42, 0xAB, 0xCD]).buffer);
+            const byte_array = Byte_Array(Uint(8), Branch((context: Context_Array) => context[0], {1: Uint(16, {little_endian: true}), 2: Uint(16)}));
+            expect(() => byte_array.parse(data_view)).toThrow(SerializationError);
+        });
     });
 });
 describe("Padding", () => {
     test("parsing", () => {
         const data_view = new DataView(new Uint8Array([1, 0, 0xAA]).buffer);
-        const byte_array = Byte_Array(Uint(8), Padding({bytes: 1}), Uint(8), {decode: array_decode});
+        const byte_array = Byte_Array(Uint(8), Padding({bytes: 1}), Uint(8));
         expect(byte_array.parse(data_view)).toEqual({data: [1, 0xAA], size: 3});
         byte_array[1] = Padding({bytes: 1, bits: 4});
         byte_array[2] = Bits(4);
@@ -158,10 +171,9 @@ describe("Padding", () => {
     });
 });
 describe("Byte_Array parsing", () => {
-    const decode = array_decode;
     test("parse a single byte", () => {
         const data_view = new DataView(new Uint8Array([42]).buffer);
-        const byte_array = Byte_Array({decode}, Uint(8));
+        const byte_array = Byte_Array(Uint(8));
         expect(byte_array.parse(data_view)).toEqual({data: [42], size: 1})
     });
     test("setting endianness various ways", () => {
@@ -169,19 +181,19 @@ describe("Byte_Array parsing", () => {
         const lower = now % 2 ** 32;
         const upper = Math.floor(now / 2 ** 32);
         const data_view = new DataView(new Uint32Array([lower, upper]).buffer);
-        const byte_array = Byte_Array({decode, little_endian: true}, Uint(64));
+        const byte_array = Byte_Array({little_endian: true}, Uint(64));
         expect(byte_array.parse(data_view)).toEqual({data: [now], size: 8});
         byte_array.little_endian = false;
         expect(byte_array.parse(data_view, {little_endian: true})).toEqual({data: [now], size: 8});
     });
     test("embedded arrays", () => {
         const data_view = new DataView(new Uint8Array([0, 1, 2, 3]).buffer);
-        const byte_array = Byte_Array({decode}, Uint(8), Embed(Byte_Array(Uint(8), Uint(8))), Uint(8));
+        const byte_array = Byte_Array(Uint(8), Embed(Byte_Array(Uint(8), Uint(8))), Uint(8));
         expect(byte_array.parse(data_view)).toEqual({data: [0, 1, 2, 3], size: 4});
     });
     test("nested repeat", () => {
         const data_view = new DataView(new Uint8Array([0, 1, 2, 3, 4]).buffer);
-        const byte_array = Byte_Array({decode}, Uint(8), Repeat(3, {decode}, Uint(8)), Uint(8));
+        const byte_array = Byte_Array(Uint(8), Repeat(3, inspect, Uint(8)), Uint(8));
         expect(byte_array.parse(data_view)).toEqual({data: [0, [1, 2, 3], 4], size: 5});
     });
 });
@@ -246,7 +258,7 @@ describe("Byte_Array packing", () => {
 test("Byte_Array mutability as an array", () => {
     const array = [0, 1, 2];
     const data_view = new DataView(new Uint8Array(array).buffer);
-    const byte_array = Byte_Array({decode: array_decode});
+    const byte_array = Byte_Array();
     expect(byte_array.parse(data_view)).toEqual({data: [], size: 0});
     byte_array.push(Uint(8));
     expect(byte_array.parse(data_view)).toEqual({data: [0], size: 1});
@@ -261,7 +273,7 @@ test("Byte_Array mutability as an array", () => {
 describe("Repeat parsing", () => {
     test("simple case", () => {
         const data_view = new DataView(new Uint8Array([6, 5, 4, 3, 2, 1]).buffer);
-        const repeat = Repeat(3, Uint(8), Uint(8), {decode: array_decode});
+        const repeat = Repeat(3, Uint(8), Uint(8));
         expect(repeat.parse(data_view)).toEqual({data: [6, 5, 4, 3, 2, 1], size: 6});
     });
 });
@@ -270,20 +282,20 @@ describe("Repeat packing", () => {
         const array = [6, 5, 4, 3, 2, 1];
         const bytes = new Uint8Array(6);
         const data_view = new DataView(bytes.buffer);
-        const repeat = Repeat(3, Uint(8), Uint(8));
+        const repeat = Repeat(6, Uint(8));
         repeat.pack(array, {data_view});
         expect(Array.from(bytes)).toEqual(array);
     });
     test("without data_view", () => {
         const array = [6, 5, 4, 3, 2, 1];
-        const repeat = Repeat(3, Uint(8), Uint(8));
+        const repeat = Repeat(6, Uint(8));
         const {size, buffer} = repeat.pack(array);
         expect(size).toEqual(array.length);
         expect(Array.from(new Uint8Array(buffer))).toEqual(array);
     });
 });
 describe("Byte_Map parsing", () => {
-    const decode = map_decode;
+    const decode = <T>(data: Map<string, T>) => data.toObject();
     test("parse a byte", () => {
         const data_view = new DataView(new Uint8Array([42]).buffer);
         const byte_map = Byte_Map({decode}).set('a_byte', Uint(8));
@@ -307,12 +319,11 @@ describe("Byte_Map parsing", () => {
     });
 });
 describe("Byte Map packing", () => {
-    const decode = map_decode;
     describe("given data_view", () => {
         test("pack a byte", () => {
-            const byte_map = Byte_Map({decode}).set('one', Uint(8));
+            const byte_map = Byte_Map().set('one', Uint(8));
             const data_view = new DataView(new ArrayBuffer(1));
-            byte_map.pack({one: 42}, {data_view});
+            byte_map.pack(new Map([['one', 42]]), {data_view});
             expect(data_view.getUint8(0)).toEqual(42);
         });
     });
