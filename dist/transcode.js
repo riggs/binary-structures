@@ -46,7 +46,7 @@ const decode_and_deliver = ({ parsed_data, decode, context, deliver }) => {
     }
     return decoded;
 };
-const bakery /* it makes Bytes */ = (serializer, deserializer, verify_size) => {
+const factory = (serializer, deserializer, verify_size) => {
     return ((bits, transcoders = {}) => {
         if (!verify_size(bits)) {
             throw new Error(`Invalid size: ${bits}`);
@@ -67,11 +67,11 @@ const bakery /* it makes Bytes */ = (serializer, deserializer, verify_size) => {
         return { pack, parse };
     });
 };
-export const Bits = bakery(uint_pack, uint_parse, (s) => Bits_Sizes.includes(s));
-export const Uint = bakery(uint_pack, uint_parse, (s) => Uint_Sizes.includes(s));
-export const Int = bakery(int_pack, int_parse, (s) => Int_Sizes.includes(s));
-export const Float = bakery(float_pack, float_parse, (s) => Float_Sizes.includes(s));
-export const Utf8 = bakery(utf8_pack, utf8_parse, (s) => s % 8 === 0 && s >= 0);
+export const Bits = factory(uint_pack, uint_parse, (s) => Bits_Sizes.includes(s));
+export const Uint = factory(uint_pack, uint_parse, (s) => Uint_Sizes.includes(s));
+export const Int = factory(int_pack, int_parse, (s) => Int_Sizes.includes(s));
+export const Float = factory(float_pack, float_parse, (s) => Float_Sizes.includes(s));
+export const Utf8 = factory(utf8_pack, utf8_parse, (s) => s % 8 === 0 && s >= 0);
 const numeric = (n, context) => typeof n === 'number' ? n : n(context);
 /** Byte_Buffer doesn't do any serialization, but just copies bytes to/from an ArrayBuffer that's a subset of the
  * serialized buffer. Byte_Buffer only works on byte-aligned data.

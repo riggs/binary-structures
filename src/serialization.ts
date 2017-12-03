@@ -35,7 +35,7 @@ export interface Deserializer<T> {
     (options: Serialization_Options): T;
 }
 
-const write_bit_shift: ((packer: Serializer<any>, value: any, options: Serialization_Options) => Size) =
+const write_bit_shift: (<T>(packer: Serializer<T>, value: T, options: Serialization_Options) => Size) =
         (packer, value, {bits, data_view, byte_offset = 0, little_endian}) => {
     /*
     bit_offset = 5
@@ -59,7 +59,7 @@ const write_bit_shift: ((packer: Serializer<any>, value: any, options: Serializa
     return bit_length;
 };
 
-const read_bit_shift: ((parser: Deserializer<any>, options: Serialization_Options) => any) =
+const read_bit_shift: (<T>(parser: Deserializer<T>, options: Serialization_Options) => T) =
     (parser, {bits, data_view, byte_offset = 0, little_endian}) => {
         const bit_offset = (byte_offset % 1) * 8;
         byte_offset = Math.floor(byte_offset);

@@ -21,11 +21,6 @@ export interface Transcoders<Encoded, Decoded> {
     decode?: Decoder<Encoded, Decoded>;
     little_endian?: boolean;
 }
-export declare type Encoded = Primatives | Encoded_Array | Encoded_Map;
-export interface Encoded_Array extends Array<Encoded> {
-}
-export interface Encoded_Map extends Map<string, Encoded> {
-}
 export declare const inspect_transcoder: <T>(data: T, context?: any) => T;
 export declare const inspect: {
     encode: <T>(data: T, context?: any) => T;
@@ -72,17 +67,14 @@ export interface Parser<Decoded> {
     (data_view: DataView, options?: Parse_Options, deliver?: Deliver<Decoded>): Parsed<Decoded>;
 }
 export interface Struct<Decoded> {
-    pack: Packer<Decoded>;
+    pack: Packer<Decoded> | Embed_Packer<Decoded>;
     parse: Parser<Decoded>;
 }
-export interface Bytes<Encoded, Decoded> {
-    (size: number, transcoders?: Transcoders<Encoded, Decoded>): Struct<Decoded>;
-}
-export declare const Bits: Bytes<number, {}>;
-export declare const Uint: Bytes<number, {}>;
-export declare const Int: Bytes<number, {}>;
-export declare const Float: Bytes<number, {}>;
-export declare const Utf8: Bytes<string, {}>;
+export declare const Bits: <D>(bits: number, transcoders?: Transcoders<number, D>) => Struct<D>;
+export declare const Uint: <D>(bits: number, transcoders?: Transcoders<number, D>) => Struct<D>;
+export declare const Int: <D>(bits: number, transcoders?: Transcoders<number, D>) => Struct<D>;
+export declare const Float: <D>(bits: number, transcoders?: Transcoders<number, D>) => Struct<D>;
+export declare const Utf8: <D>(bits: number, transcoders?: Transcoders<string, D>) => Struct<D>;
 export declare type Numeric = number | ((context?: Parsed_Context) => number);
 /** Byte_Buffer doesn't do any serialization, but just copies bytes to/from an ArrayBuffer that's a subset of the
  * serialized buffer. Byte_Buffer only works on byte-aligned data.
@@ -106,10 +98,10 @@ export declare const Padding: (value?: number | {
     bytes?: number | undefined;
 }) => Struct<null>;
 export declare type Map_Options<D, I> = Transcoders<Map<string, I>, D>;
-export declare type Map_Iterable<I> = Array<[string, Struct<I>]>;
-export interface Byte_Map_Class<D, I> extends Struct<D>, Map_Options<D, I>, Map<string, Struct<I>> {
+export declare type Map_Iterable<I> = Array<[string, Struct<I | null>]>;
+export interface Byte_Map_Class<D, I> extends Struct<D>, Map_Options<D, I>, Map<string, Struct<I | null>> {
 }
-export declare class Byte_Map_Class<D, I> extends Map<string, Struct<I>> {
+export declare class Byte_Map_Class<D, I> extends Map<string, Struct<I | null>> {
     constructor(options?: Map_Options<D, I>, iterable?: Map_Iterable<I>);
     pack<S>(source_data: S, options?: Pack_Options, fetch?: Fetch<S, D>): {
         size: number;
@@ -120,12 +112,12 @@ export declare class Byte_Map_Class<D, I> extends Map<string, Struct<I>> {
         size: number;
     };
 }
-export declare const Byte_Map: <D, I>(options?: Transcoders<Map<string, I>, D> | [string, Struct<I>][] | undefined, iterable?: Transcoders<Map<string, I>, D> | [string, Struct<I>][] | undefined) => Byte_Map_Class<D, I>;
+export declare const Byte_Map: <D, I>(options?: Transcoders<Map<string, I>, D> | [string, Struct<I | null>][] | undefined, iterable?: Transcoders<Map<string, I>, D> | [string, Struct<I | null>][] | undefined) => Byte_Map_Class<D, I>;
 export declare type Array_Options<D, I> = Transcoders<Array<I>, D>;
-export interface Byte_Array_Class<D, I> extends Struct<D>, Array_Options<D, I>, Array<Struct<I>> {
+export interface Byte_Array_Class<D, I> extends Struct<D>, Array_Options<D, I>, Array<Struct<I | null>> {
 }
-export declare class Byte_Array_Class<D, I> extends Array<Struct<I>> {
-    constructor(options?: Array_Options<D, I>, ...elements: Array<Struct<I>>);
+export declare class Byte_Array_Class<D, I> extends Array<Struct<I | null>> {
+    constructor(options?: Array_Options<D, I>, ...elements: Array<Struct<I | null>>);
     pack<S>(source_data: S, options?: Pack_Options, fetch?: Fetch<S, D>, fetcher?: Fetch<Array<I>, I>): {
         size: number;
         buffer: ArrayBuffer;
@@ -137,11 +129,11 @@ export declare class Byte_Array_Class<D, I> extends Array<Struct<I>> {
     };
     protected __parse_loop(data_view: DataView, {byte_offset, little_endian, context}: Parse_Options, deliver: Deliver<I>): number;
 }
-export declare const Byte_Array: <D, I>(...elements: (Transcoders<I[], D> | Struct<I>)[]) => Byte_Array_Class<D, I>;
+export declare const Byte_Array: <D, I>(...elements: (Transcoders<I[], D> | Struct<I | null>)[]) => Byte_Array_Class<D, I>;
 export declare class Byte_Repeat<D, I> extends Byte_Array_Class<D, I> {
     count: Numeric;
-    constructor(count: Numeric, options: Array_Options<D, I>, ...elements: Array<Struct<I>>);
+    constructor(count: Numeric, options: Array_Options<D, I>, ...elements: Array<Struct<I | null>>);
     protected __pack_loop<E>(data: E, {data_view, byte_offset, little_endian, context}: Pack_Options, fetcher: Fetch<E, I>, store: (result: Packed) => void): number;
     protected __parse_loop(data_view: DataView, {byte_offset, little_endian, context}: Parse_Options, deliver: Deliver<I>): number;
 }
-export declare const Repeat: <D, I>(count: Numeric, ...elements: (Transcoders<I[], D> | Struct<I>)[]) => Byte_Repeat<D, I>;
+export declare const Repeat: <D, I>(count: Numeric, ...elements: (Transcoders<I[], D> | Struct<I | null>)[]) => Byte_Repeat<D, I>;

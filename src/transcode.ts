@@ -57,10 +57,6 @@ export interface Transcoders<Encoded, Decoded> {
     little_endian?: boolean;
 }
 
-export type Encoded = Primatives | Encoded_Array | Encoded_Map
-export interface Encoded_Array extends Array<Encoded> {}
-export interface Encoded_Map extends Map<string, Encoded> {}
-
 export const inspect_transcoder = <T>(data: T, context?: Parsed_Context | Packed_Context): T => {
     console.log({data, context});
     return data
@@ -123,7 +119,7 @@ export interface Parser<Decoded> {
 
 /* Explicitly imposing that, for custom Transcoders, output format from deserialization must match input format to serialization */
 export interface Struct<Decoded> {
-    pack: Packer<Decoded>;
+    pack: Packer<Decoded> | Embed_Packer<Decoded>;
     parse: Parser<Decoded>;
 }
 
@@ -154,16 +150,11 @@ const decode_and_deliver = <E, D>({parsed_data, decode, context, deliver}: {pars
     return decoded;
 };
 
-export interface Bytes<Encoded, Decoded> {
-    (size: number, transcoders?: Transcoders<Encoded, Decoded>): Struct<Decoded>;
-}
-
-const bakery /* it makes Bytes */ = <E, D>(serializer: Serializer<E>, deserializer: Deserializer<E>, verify_size: (bits: number) => boolean) => {
-    return <Bytes<E, D>>((bits, transcoders = {}) => {
+const factory = <E>(serializer: Serializer<E>, deserializer: Deserializer<E>, verify_size: (bits: number) => boolean) => {
+    return (<D>(bits: number, transcoders: Transcoders<E, D> = {}): Struct<D> => {
         if(!verify_size(bits)) {
             throw new Error(`Invalid size: ${bits}`);
         }
-
         const {encode, decode} = transcoders;
 
         const pack: Packer<D> = (source_data, options = {}, fetch) => {
@@ -183,15 +174,15 @@ const bakery /* it makes Bytes */ = <E, D>(serializer: Serializer<E>, deserializ
     });
 };
 
-export const Bits = bakery(uint_pack, uint_parse, (s) => Bits_Sizes.includes(s));
+export const Bits = factory(uint_pack, uint_parse, (s) => Bits_Sizes.includes(s));
 
-export const Uint = bakery(uint_pack, uint_parse, (s) => Uint_Sizes.includes(s));
+export const Uint = factory(uint_pack, uint_parse, (s) => Uint_Sizes.includes(s));
 
-export const Int = bakery(int_pack, int_parse, (s) => Int_Sizes.includes(s));
+export const Int = factory(int_pack, int_parse, (s) => Int_Sizes.includes(s));
 
-export const Float = bakery(float_pack, float_parse, (s) => Float_Sizes.includes(s));
+export const Float = factory(float_pack, float_parse, (s) => Float_Sizes.includes(s));
 
-export const Utf8 = bakery(utf8_pack, utf8_parse, (s) => s % 8 === 0 && s >= 0);
+export const Utf8 = factory(utf8_pack, utf8_parse, (s) => s % 8 === 0 && s >= 0);
 
 export type Numeric = number | ((context?: Parsed_Context) => number);
 
@@ -283,7 +274,6 @@ export const Embed = <D>(thing: Struct<D>) => {
 };
 
 export const Padding = (value: number | {bits?: number, bytes?: number} = 0): Struct<null> => {
-
     let size: number;
     if (typeof value === 'object') {
         let {bits = 0, bytes = 0} = value;
@@ -304,10 +294,10 @@ export const Padding = (value: number | {bits?: number, bytes?: number} = 0): St
 };
 
 export type Map_Options<D, I> = Transcoders<Map<string, I>, D>;
-export type Map_Iterable<I> = Array<[string, Struct<I>]>;
+export type Map_Iterable<I> = Array<[string, Struct<I | null>]>;
 
-export interface Byte_Map_Class<D, I> extends Struct<D>, Map_Options<D, I>, Map<string, Struct<I>> {}
-export class Byte_Map_Class<D, I> extends Map<string, Struct<I>> {
+export interface Byte_Map_Class<D, I> extends Struct<D>, Map_Options<D, I>, Map<string, Struct<I | null>> {}
+export class Byte_Map_Class<D, I> extends Map<string, Struct<I | null>> {
     constructor(options: Map_Options<D, I> = {}, iterable?: Map_Iterable<I>) {
         super(iterable);
         let {encode, decode, little_endian} = options;
@@ -399,9 +389,9 @@ const concat_buffers = (packed: Packed[], byte_length: number) => {
 
 export type Array_Options<D, I> = Transcoders<Array<I>, D>;
 
-export interface Byte_Array_Class<D, I> extends Struct<D>, Array_Options<D, I>, Array<Struct<I>> {}
-export class Byte_Array_Class<D, I> extends Array<Struct<I>> {
-    constructor(options: Array_Options<D, I> = {}, ...elements: Array<Struct<I>>) {
+export interface Byte_Array_Class<D, I> extends Struct<D>, Array_Options<D, I>, Array<Struct<I | null>> {}
+export class Byte_Array_Class<D, I> extends Array<Struct<I | null>> {
+    constructor(options: Array_Options<D, I> = {}, ...elements: Array<Struct<I | null>>) {
         super(...elements);
         let {encode, decode, little_endian} = options;
         this.encode = encode;
@@ -472,7 +462,7 @@ export class Byte_Array_Class<D, I> extends Array<Struct<I>> {
 }
 
 /* This would be much cleaner if JavaScript had interfaces. Or I could make everything subclass Struct... */
-const extract_array_options = <D, I>(elements: Array<Struct<I> | Array_Options<D, I>>) => {
+const extract_array_options = <D, I>(elements: Array<Struct<I | null> | Array_Options<D, I>>) => {
 
     const options: Array_Options<D, I> = {};
     if (elements.length > 0) {
@@ -491,13 +481,13 @@ const extract_array_options = <D, I>(elements: Array<Struct<I> | Array_Options<D
     return options;
 };
 
-export const Byte_Array = <D, I>(...elements: Array<Array_Options<D, I> | Struct<I>>) => {
-    return new Byte_Array_Class(extract_array_options(elements), ...elements as Array<Struct<I>>);
+export const Byte_Array = <D, I>(...elements: Array<Array_Options<D, I> | Struct<I | null>>) => {
+    return new Byte_Array_Class(extract_array_options(elements), ...elements as Array<Struct<I | null>>);
 };
 
 export class Byte_Repeat<D, I> extends Byte_Array_Class<D, I> {
     count: Numeric;
-    constructor(count: Numeric, options: Array_Options<D, I>, ...elements: Array<Struct<I>>) {
+    constructor(count: Numeric, options: Array_Options<D, I>, ...elements: Array<Struct<I | null>>) {
         super(options, ...elements);
         this.count = count;
     }
@@ -521,7 +511,7 @@ export class Byte_Repeat<D, I> extends Byte_Array_Class<D, I> {
     }
 }
 
-export const Repeat = <D, I>(count: Numeric, ...elements: Array<Array_Options<D, I> | Struct<I>>) => {
-    return new Byte_Repeat(count, extract_array_options(elements), ...elements as Array<Struct<I>>);
+export const Repeat = <D, I>(count: Numeric, ...elements: Array<Array_Options<D, I> | Struct<I | null>>) => {
+    return new Byte_Repeat(count, extract_array_options(elements), ...elements as Array<Struct<I | null>>);
 };
 
