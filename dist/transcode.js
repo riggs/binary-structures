@@ -53,13 +53,13 @@ const bakery /* it makes Bytes */ = (serializer, deserializer, verify_size) => {
         }
         const { encode, decode } = transcoders;
         const pack = (source_data, options = {}, fetch) => {
-            let { data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, little_endian = transcoders.little_endian, context } = options;
+            const { data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, little_endian = transcoders.little_endian, context } = options;
             const data = fetch_and_encode({ source_data, fetch, encode, context });
             const size = (serializer(data, { bits, data_view, byte_offset, little_endian }) / 8);
             return { size, buffer: data_view.buffer };
         };
         const parse = (data_view, options = {}, deliver) => {
-            let { byte_offset = 0, little_endian = transcoders.little_endian, context } = options;
+            const { byte_offset = 0, little_endian = transcoders.little_endian, context } = options;
             const parsed_data = deserializer({ bits, data_view, byte_offset, little_endian });
             const data = decode_and_deliver({ parsed_data, decode, context, deliver });
             return { data, size: bits / 8 };
@@ -73,6 +73,38 @@ export const Int = bakery(int_pack, int_parse, (s) => Int_Sizes.includes(s));
 export const Float = bakery(float_pack, float_parse, (s) => Float_Sizes.includes(s));
 export const Utf8 = bakery(utf8_pack, utf8_parse, (s) => s % 8 === 0 && s >= 0);
 const numeric = (n, context) => typeof n === 'number' ? n : n(context);
+/** Byte_Buffer doesn't do any serialization, but just copies bytes to/from an ArrayBuffer that's a subset of the
+ * serialized buffer. Byte_Buffer only works on byte-aligned data.
+ *
+ * @param {Numeric} length
+ * @param {Transcoders<ArrayBuffer, any>} transcoders
+ */
+export const Byte_Buffer = (length, transcoders = {}) => {
+    const { encode, decode } = transcoders;
+    const pack = (source_data, options = {}, fetch) => {
+        const { data_view, byte_offset = 0, context } = options;
+        const buffer = fetch_and_encode({ source_data, fetch, encode, context });
+        const size = numeric(length, context);
+        if (size !== buffer.byteLength) {
+            throw new Error(`Length miss-match. Expected length: ${size}, actual bytelength: ${buffer.byteLength}`);
+        }
+        if (data_view === undefined) {
+            return { size, buffer };
+        }
+        new Uint8Array(buffer).forEach((value, index) => {
+            data_view.setUint8(byte_offset + index, value);
+        });
+        return { size, buffer: data_view.buffer };
+    };
+    const parse = (data_view, options = {}, deliver) => {
+        const { byte_offset = 0, context } = options;
+        const size = numeric(length, context);
+        const buffer = data_view.buffer.slice(byte_offset, byte_offset + size);
+        const data = decode_and_deliver({ parsed_data: buffer, decode, context, deliver });
+        return { data, size };
+    };
+    return { pack, parse };
+};
 export const Branch = (chooser, choices, default_choice) => {
     const choose = (options = {}, data_view) => {
         let choice = chooser(options.context);
@@ -135,8 +167,8 @@ export const Padding = (value = 0) => {
     if (size < 0) {
         throw new Error(`Invalid size: ${size} bytes`);
     }
-    const pack = (source_data, options, fetch) => {
-        return { size, buffer: new ArrayBuffer(Math.ceil(size)) };
+    const pack = (source_data, options = {}, fetch) => {
+        return { size, buffer: options.data_view === undefined ? new ArrayBuffer(Math.ceil(size)) : options.data_view.buffer };
     };
     const parse = (data_view, options = {}, deliver) => {
         return { size, data: null };
@@ -151,18 +183,20 @@ export class Byte_Map_Class extends Map {
         this.decode = decode;
         this.little_endian = little_endian;
     }
-    pack(data, options = {}, fetch) {
-        let { data_view, byte_offset = 0, little_endian = this.little_endian, context = data } = options;
-        if (fetch !== undefined) {
-            data = fetch(data);
-        }
-        if (this.encode !== undefined) {
-            data = this.encode(data, context);
-        }
+    pack(source_data, options = {}, fetch) {
+        let { data_view, byte_offset = 0, little_endian = this.little_endian, context = source_data } = options;
+        const data = fetch_and_encode({ source_data, fetch, encode: this.encode, context });
         const packed = [];
+        const fetcher = (key) => (source) => {
+            const value = source.get(key);
+            if (value === undefined) {
+                throw new Error(`Insufficient data for serialization: ${source_data}`);
+            }
+            return value;
+        };
         let offset = 0;
         for (const [key, item] of this) {
-            const { size, buffer } = item.pack(data, { data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context }, (data) => data.get(key));
+            const { size, buffer } = item.pack(data, { data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context }, fetcher(key));
             if (data_view === undefined) {
                 packed.push({ size, buffer });
             }
@@ -235,7 +269,13 @@ export class Byte_Array_Class extends Array {
         const packed = [];
         if (fetcher === undefined) {
             const iterator = data[Symbol.iterator]();
-            fetcher = (source_data) => iterator.next().value;
+            fetcher = (source_data) => {
+                const value = iterator.next().value;
+                if (value === undefined) {
+                    throw new Error(`Insufficient data for serialization: ${source_data}`);
+                }
+                return value;
+            };
         }
         const store = (result) => {
             if (data_view === undefined) {

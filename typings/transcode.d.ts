@@ -84,6 +84,13 @@ export declare const Int: Bytes<number, {}>;
 export declare const Float: Bytes<number, {}>;
 export declare const Utf8: Bytes<string, {}>;
 export declare type Numeric = number | ((context?: Parsed_Context) => number);
+/** Byte_Buffer doesn't do any serialization, but just copies bytes to/from an ArrayBuffer that's a subset of the
+ * serialized buffer. Byte_Buffer only works on byte-aligned data.
+ *
+ * @param {Numeric} length
+ * @param {Transcoders<ArrayBuffer, any>} transcoders
+ */
+export declare const Byte_Buffer: <D>(length: Numeric, transcoders?: Transcoders<ArrayBuffer, D>) => Struct<D>;
 export declare type Chooser = (context?: Parsed_Context) => Primatives;
 export interface Choices<D> {
     [choice: number]: Struct<D>;
@@ -104,7 +111,7 @@ export interface Byte_Map_Class<D, I> extends Struct<D>, Map_Options<D, I>, Map<
 }
 export declare class Byte_Map_Class<D, I> extends Map<string, Struct<I>> {
     constructor(options?: Map_Options<D, I>, iterable?: Map_Iterable<I>);
-    pack<S>(data: any, options?: Pack_Options, fetch?: Fetch<S, D>): {
+    pack<S>(source_data: S, options?: Pack_Options, fetch?: Fetch<S, D>): {
         size: number;
         buffer: ArrayBuffer;
     };

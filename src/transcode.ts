@@ -167,14 +167,14 @@ const bakery /* it makes Bytes */ = <E, D>(serializer: Serializer<E>, deserializ
         const {encode, decode} = transcoders;
 
         const pack: Packer<D> = (source_data, options = {}, fetch) => {
-            let {data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, little_endian = transcoders.little_endian, context} = options;
+            const {data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, little_endian = transcoders.little_endian, context} = options;
             const data = fetch_and_encode({source_data, fetch, encode, context});
             const size = (serializer(data, {bits, data_view, byte_offset, little_endian}) / 8);
             return {size, buffer: data_view.buffer};
         };
 
         const parse: Parser<D> = (data_view, options = {}, deliver) => {
-            let {byte_offset = 0, little_endian = transcoders.little_endian, context} = options;
+            const {byte_offset = 0, little_endian = transcoders.little_endian, context} = options;
             const parsed_data = deserializer({bits, data_view, byte_offset, little_endian});
             const data = decode_and_deliver({parsed_data, decode, context, deliver});
             return {data, size: bits / 8};
@@ -197,17 +197,38 @@ export type Numeric = number | ((context?: Parsed_Context) => number);
 
 const numeric = (n: Numeric, context?: Parsed_Context): number => typeof n === 'number' ? n : n(context);
 
-// export const Byte_Buffer = <D>(length: Numeric, transcoders: Transcoders<ArrayBuffer, D>): Struct<D> => {
-//     const {encode, decode} = transcoders;
-//     const pack: Packer<D> = (source_data, options, fetch) => {
-//
-//         const count = numeric(this.count, context);
-//     };
-//     const parse: Parser<D> = (data_view, options = {}, deliver) => {
-//         let {byte_offset = 0, little_endian = transcoders.little_endian, context} = options;
-//     };
-//     return {pack, parse}
-// };
+/** Byte_Buffer doesn't do any serialization, but just copies bytes to/from an ArrayBuffer that's a subset of the
+ * serialized buffer. Byte_Buffer only works on byte-aligned data.
+ *
+ * @param {Numeric} length
+ * @param {Transcoders<ArrayBuffer, any>} transcoders
+ */
+export const Byte_Buffer = <D>(length: Numeric, transcoders: Transcoders<ArrayBuffer, D> = {}): Struct<D> => {
+    const {encode, decode} = transcoders;
+    const pack: Packer<D> = (source_data, options = {}, fetch) => {
+        const {data_view, byte_offset = 0, context} = options;
+        const buffer = fetch_and_encode({source_data, fetch, encode, context});
+        const size = numeric(length, context);
+        if (size !== buffer.byteLength) {
+            throw new Error(`Length miss-match. Expected length: ${size}, actual bytelength: ${buffer.byteLength}`)
+        }
+        if (data_view === undefined) {
+            return {size, buffer}
+        }
+        new Uint8Array(buffer).forEach((value, index) => {
+            data_view.setUint8(byte_offset + index, value);
+        });
+        return {size, buffer: data_view.buffer}
+    };
+    const parse: Parser<D> = (data_view, options = {}, deliver) => {
+        const {byte_offset = 0, context} = options;
+        const size = numeric(length, context);
+        const buffer = data_view.buffer.slice(byte_offset, byte_offset + size);
+        const data = decode_and_deliver({parsed_data: buffer, decode, context, deliver});
+        return {data, size};
+    };
+    return {pack, parse}
+};
 
 export type Chooser = (context?: Parsed_Context) => Primatives;
 export interface Choices<D> {
@@ -273,8 +294,8 @@ export const Padding = (value: number | {bits?: number, bytes?: number} = 0): St
     if(size < 0) {
         throw new Error(`Invalid size: ${size} bytes`);
     }
-    const pack: Packer<null> = (source_data, options, fetch) => {
-        return {size, buffer: new ArrayBuffer(Math.ceil(size))}
+    const pack: Packer<null> = (source_data, options = {}, fetch) => {
+        return {size, buffer: options.data_view === undefined ? new ArrayBuffer(Math.ceil(size)) : options.data_view.buffer}
     };
     const parse: Parser<null> = (data_view, options = {}, deliver) => {
         return {size, data: null};

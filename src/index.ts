@@ -13,6 +13,7 @@ export {
     Embed,
     Byte_Array,
     Byte_Map,
+    Byte_Buffer,
     Repeat,
     Branch,
     Padding
