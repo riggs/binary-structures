@@ -1,7 +1,7 @@
 # declarative-binary-serialization
 Does what it says on the tin.
 
-It works, I just need to write more tests and document it.
+It works, just needs better documentation and better test coverage.
 
 ## Example
 ```
@@ -24,7 +24,7 @@ let report = Byte_Map({little_endian: true})
 ### Uint(size\[, {encode?, decode?, little_endian?}])
 
 ### Repeat
-Repeat({count?: Numeric, bytes?: Numeric, encode?, decode?, little_endian?}, ...elements)
+`Repeat({count?: Numeric, bytes?: Numeric, encode?, decode?, little_endian?}, ...elements)`:
 One of either `count` or `bytes` must be provided.
 
 Repeat will repeatedly iterate through `elements`:

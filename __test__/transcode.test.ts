@@ -1,4 +1,4 @@
-import 'improved_map';
+import 'improved-map';
 
 import {
     SerializationError,
