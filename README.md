@@ -1,4 +1,4 @@
-# binary-struct
+# binary-structures
 Yet another declarative binary parser/packer, but built for modern browsers.
 
 Specifically, built to support WebUSB.

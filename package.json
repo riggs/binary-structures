@@ -1,6 +1,6 @@
 {
-  "name": "binary-struct",
-  "version": "0.10.2",
+  "name": "binary-structures",
+  "version": "0.10.3",
   "description": "Yet another declarative binary packer/parser, but built for modern browsers.",
   "keywords": [
     "binary",
@@ -59,12 +59,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/riggs/binary-struct.git"
+    "url": "git+https://github.com/riggs/binary-structures.git"
   },
   "author": "Benjamin Riggs (https://github.com/riggs/)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/riggs/binary-struct/issues"
+    "url": "https://github.com/riggs/binary-structures/issues"
   },
-  "homepage": "https://github.com/riggs/binary-struct#readme"
+  "homepage": "https://github.com/riggs/binary-structures#readme"
 }
