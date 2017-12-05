@@ -201,7 +201,7 @@ describe("Byte_Array", () => {
         });
         test("nested repeat", () => {
             const data_view = new DataView(new Uint8Array([0, 1, 2, 3, 4]).buffer);
-            const byte_array = Byte_Array(Uint(8), Repeat(3, inspect, Uint(8)), Uint(8));
+            const byte_array = Byte_Array(Uint(8), Repeat(3, Uint(8)), Uint(8));
             expect(byte_array.parse(data_view)).toEqual({data: [0, [1, 2, 3], 4], size: 5});
         });
     });
