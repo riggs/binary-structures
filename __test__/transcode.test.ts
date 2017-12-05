@@ -201,7 +201,7 @@ describe("Byte_Array", () => {
         });
         test("nested repeat", () => {
             const data_view = new DataView(new Uint8Array([0, 1, 2, 3, 4]).buffer);
-            const byte_array = Byte_Array(Uint(8), Repeat(3, Uint(8)), Uint(8));
+            const byte_array = Byte_Array(Uint(8), Repeat(Uint(8), {count: 3}), Uint(8));
             expect(byte_array.parse(data_view)).toEqual({data: [0, [1, 2, 3], 4], size: 5});
         });
     });
@@ -281,10 +281,20 @@ describe("Byte_Array", () => {
 });
 describe("Repeat", () => {
     describe("Parsing", () => {
-        test("simple case", () => {
+        test("simple count case", () => {
             const data_view = new DataView(new Uint8Array([6, 5, 4, 3, 2, 1]).buffer);
-            const repeat = Repeat(3, Uint(8), Uint(8));
+            const repeat = Repeat({count: 3}, Uint(8), Uint(8));
             expect(repeat.parse(data_view)).toEqual({data: [6, 5, 4, 3, 2, 1], size: 6});
+        });
+        test("bytes function case", () => {
+            const data_view = new DataView(new Uint8Array([6, 5, 4, 3, 2, 1]).buffer);
+            const repeat = Repeat({bytes: () => 6}, Uint(8), Uint(8), Uint(8));
+            expect(repeat.parse(data_view)).toEqual({data: [6, 5, 4, 3, 2, 1], size: 6});
+        });
+        test("error in bytes size", () => {
+            const data_view = new DataView(new Uint8Array([6, 5, 4, 3, 2, 1]).buffer);
+            const repeat = Repeat({bytes: 5}, Uint(16));
+            expect(() => repeat.parse(data_view)).toThrow(/Cannot parse exactly/);
         });
     });
     describe("Packing", () => {
@@ -292,16 +302,21 @@ describe("Repeat", () => {
             const array = [6, 5, 4, 3, 2, 1];
             const bytes = new Uint8Array(6);
             const data_view = new DataView(bytes.buffer);
-            const repeat = Repeat(6, Uint(8));
+            const repeat = Repeat({count: 6}, Uint(8));
             repeat.pack(array, {data_view});
             expect(Array.from(bytes)).toEqual(array);
         });
         test("Given no DataView", () => {
             const array = [6, 5, 4, 3, 2, 1];
-            const repeat = Repeat(6, Uint(8));
+            const repeat = Repeat({bytes: 6}, Uint(8));
             const {size, buffer} = repeat.pack(array);
             expect(size).toEqual(array.length);
             expect(Array.from(new Uint8Array(buffer))).toEqual(array);
+        });
+        test("Error in Bytes size", () => {
+            const array = [6, 5, 4, 3, 2, 1];
+            const repeat = Repeat({bytes: 5}, Uint(16));
+            expect(() => repeat.pack(array)).toThrow(/Cannot pack into/);
         });
     });
 });

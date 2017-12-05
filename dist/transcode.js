@@ -344,28 +344,61 @@ export const Byte_Array = (...elements) => {
     return new Byte_Array_Class(extract_array_options(elements), ...elements);
 };
 export class Byte_Repeat extends Byte_Array_Class {
-    constructor(count, options, ...elements) {
+    constructor(options, ...elements) {
         super(options, ...elements);
+        const { count, bytes } = options;
+        if (count === undefined && bytes === undefined) {
+            throw new Error("One of count or bytes must specified in options.");
+        }
         this.count = count;
+        this.bytes = bytes;
     }
     __pack_loop(data, { data_view, byte_offset = 0, little_endian, context }, fetcher, store) {
         let offset = 0;
-        const count = numeric(this.count, context);
-        for (let i = 0; i < count; i++) {
-            offset += super.__pack_loop(data, { data_view, byte_offset: byte_offset + offset, little_endian, context }, fetcher, store);
+        if (this.count !== undefined) {
+            const count = numeric(this.count, context);
+            for (let i = 0; i < count; i++) {
+                offset += super.__pack_loop(data, { data_view, byte_offset: byte_offset + offset, little_endian, context }, fetcher, store);
+            }
+        }
+        else if (this.bytes !== undefined) {
+            const bytes = numeric(this.bytes, context);
+            while (offset < bytes) {
+                offset += super.__pack_loop(data, { data_view, byte_offset: byte_offset + offset, little_endian, context }, fetcher, store);
+            }
+            if (offset > bytes) {
+                throw new Error(`Cannot pack into ${bytes} bytes.`);
+            }
+        }
+        else {
+            throw new Error("One of count or bytes must specified in options.");
         }
         return offset;
     }
     __parse_loop(data_view, { byte_offset = 0, little_endian, context }, deliver) {
         let offset = 0;
-        const count = numeric(this.count, context);
-        for (let i = 0; i < count; i++) {
-            offset += super.__parse_loop(data_view, { byte_offset: byte_offset + offset, little_endian, context }, deliver);
+        if (this.count !== undefined) {
+            const count = numeric(this.count, context);
+            for (let i = 0; i < count; i++) {
+                offset += super.__parse_loop(data_view, { byte_offset: byte_offset + offset, little_endian, context }, deliver);
+            }
+        }
+        else if (this.bytes !== undefined) {
+            const bytes = numeric(this.bytes, context);
+            while (offset < bytes) {
+                offset += super.__parse_loop(data_view, { byte_offset: byte_offset + offset, little_endian, context }, deliver);
+            }
+            if (offset > bytes) {
+                throw new Error(`Cannot parse exactly ${bytes} bytes.`);
+            }
+        }
+        else {
+            throw new Error("One of count or bytes must specified in options.");
         }
         return offset;
     }
 }
-export const Repeat = (count, ...elements) => {
-    return new Byte_Repeat(count, extract_array_options(elements), ...elements);
+export const Repeat = (...elements) => {
+    return new Byte_Repeat(extract_array_options(elements), ...elements);
 };
 //# sourceMappingURL=transcode.js.map

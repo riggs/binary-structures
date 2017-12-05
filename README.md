@@ -22,3 +22,12 @@ let report = Byte_Map({little_endian: true})
 ### Bits(size\[, {encode?, decode?}])
 
 ### Uint(size\[, {encode?, decode?, little_endian?}])
+
+### Repeat
+Repeat({count?: Numeric, bytes?: Numeric, encode?, decode?, little_endian?}, ...elements)
+One of either `count` or `bytes` must be provided.
+
+Repeat will repeatedly iterate through `elements`:
+* If `count` is specified, it will repeat `count` times.
+* If `bytes` is specified, it will repeat until `bytes` bytes have been consumed.
+An error will be thrown if `bytes` isn't a multiple of the size of `elements`.

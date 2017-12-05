@@ -109,7 +109,7 @@ export interface Packer<Decoded> {
     <Source>(source_data: Source, options?: Pack_Options, fetch?: Fetch<Source, Decoded>): Packed;
 }
 
-export interface Embed_Packer<Decoded> {
+export interface Embedded_Array_Packer<Decoded> {
     <S extends Array<any>>(source_data: S, options?: Pack_Options, fetch?: Fetch<S, Decoded>): Packed;
 }
 
@@ -119,8 +119,14 @@ export interface Parser<Decoded> {
 
 /* Explicitly imposing that, for custom Transcoders, output format from deserialization must match input format to serialization */
 export interface Struct<Decoded> {
-    pack: Packer<Decoded> | Embed_Packer<Decoded>;
+    pack: Packer<Decoded>;
     parse: Parser<Decoded>;
+}
+
+/* A Struct-like object that doesn't do any actual serialization, but allows for convenient composition */
+export interface Meta_Struct<D> {
+    pack: Packer<D | null> | Embedded_Array_Packer<D | null>;
+    parse: Parser<D | null>;
 }
 
 const fetch_and_encode = <S, D, E>({source_data, fetch, encode, context}: { source_data: S | D | E, fetch?: Fetch<S, D | E>, encode?: Encoder<S | D, E>, context?: Packed_Context }): E => {
@@ -223,12 +229,12 @@ export const Byte_Buffer = <D>(length: Numeric, transcoders: Transcoders<ArrayBu
 
 export type Chooser = (context?: Parsed_Context) => Primatives;
 export interface Choices<D> {
-    [choice: number]: Struct<D>;
-    [choice: string]: Struct<D>;
+    [choice: number]: Meta_Struct<D>;
+    [choice: string]: Meta_Struct<D>;
 }
 
-export const Branch = <D>(chooser: Chooser, choices: Choices<D>, default_choice?: Struct<D>): Struct<D> => {
-    const choose = (options: Pack_Options = {}, data_view?: DataView): Struct<D> => {
+export const Branch = <D>(chooser: Chooser, choices: Choices<D>, default_choice?: Meta_Struct<D>): Meta_Struct<D> => {
+    const choose = (options: Pack_Options = {}, data_view?: DataView): Meta_Struct<D> => {
         let choice = chooser(options.context);
         if (choices.hasOwnProperty(choice)) {
             return choices[choice];
@@ -242,17 +248,17 @@ export const Branch = <D>(chooser: Chooser, choices: Choices<D>, default_choice?
             }
         }
     };
-    const pack: Packer<D> = (source_data, options = {}, fetch) => {
+    const pack: Packer<D | null> = (source_data, options = {}, fetch) => {
         return choose(options).pack(source_data, options, fetch);
     };
-    const parse: Parser<D> = (data_view, options = {}, deliver) => {
+    const parse: Parser<D | null> = (data_view, options = {}, deliver) => {
         return choose(options, data_view).parse(data_view, options, deliver);
     };
     return {parse, pack};
 };
 
-export const Embed = <D>(thing: Struct<D>) => {
-    const pack: Embed_Packer<D> | Packer<D> = (source_data, options, fetch) => {
+export const Embed = <D>(thing: Meta_Struct<D>) => {
+    const pack: Embedded_Array_Packer<D> | Packer<D> = (source_data, options, fetch) => {
         if (thing instanceof Byte_Array_Class) {
             return thing.pack(source_data, options, undefined, fetch);
         } else if (thing instanceof Byte_Map_Class) {
@@ -294,10 +300,10 @@ export const Padding = (value: number | {bits?: number, bytes?: number} = 0): St
 };
 
 export type Map_Options<D, I> = Transcoders<Map<string, I>, D>;
-export type Map_Iterable<I> = Array<[string, Struct<I | null>]>;
+export type Map_Iterable<I> = Array<[string, Meta_Struct<I>]>;
 
-export interface Byte_Map_Class<D, I> extends Struct<D>, Map_Options<D, I>, Map<string, Struct<I | null>> {}
-export class Byte_Map_Class<D, I> extends Map<string, Struct<I | null>> {
+export interface Byte_Map_Class<D, I> extends Struct<D>, Map_Options<D, I>, Map<string, Meta_Struct<I>> {}
+export class Byte_Map_Class<D, I> extends Map<string, Meta_Struct<I>> {
     constructor(options: Map_Options<D, I> = {}, iterable?: Map_Iterable<I>) {
         super(iterable);
         let {encode, decode, little_endian} = options;
@@ -389,9 +395,9 @@ const concat_buffers = (packed: Packed[], byte_length: number) => {
 
 export type Array_Options<D, I> = Transcoders<Array<I>, D>;
 
-export interface Byte_Array_Class<D, I> extends Struct<D>, Array_Options<D, I>, Array<Struct<I | null>> {}
-export class Byte_Array_Class<D, I> extends Array<Struct<I | null>> {
-    constructor(options: Array_Options<D, I> = {}, ...elements: Array<Struct<I | null>>) {
+export interface Byte_Array_Class<D, I> extends Struct<D>, Array_Options<D, I>, Array<Meta_Struct<I>> {}
+export class Byte_Array_Class<D, I> extends Array<Meta_Struct<I>> {
+    constructor(options: Array_Options<D, I> = {}, ...elements: Array<Meta_Struct<I>>) {
         super(...elements);
         let {encode, decode, little_endian} = options;
         this.encode = encode;
@@ -462,9 +468,9 @@ export class Byte_Array_Class<D, I> extends Array<Struct<I | null>> {
 }
 
 /* This would be much cleaner if JavaScript had interfaces. Or I could make everything subclass Struct... */
-const extract_array_options = <D, I>(elements: Array<Struct<I | null> | Array_Options<D, I>>) => {
+const extract_array_options = <D, I>(elements: Array<Meta_Struct<I> | Repeat_Options<D, I>>) => {
 
-    const options: Array_Options<D, I> = {};
+    const options: Repeat_Options<D, I> = {};
     if (elements.length > 0) {
         const first = elements[0];
         if (!first.hasOwnProperty('pack') && !first.hasOwnProperty('parse')) {
@@ -481,37 +487,72 @@ const extract_array_options = <D, I>(elements: Array<Struct<I | null> | Array_Op
     return options;
 };
 
-export const Byte_Array = <D, I>(...elements: Array<Array_Options<D, I> | Struct<I | null>>) => {
-    return new Byte_Array_Class(extract_array_options(elements), ...elements as Array<Struct<I | null>>);
+export const Byte_Array = <D, I>(...elements: Array<Array_Options<D, I> | Meta_Struct<I>>) => {
+    return new Byte_Array_Class(extract_array_options(elements), ...elements as Array<Meta_Struct<I>>);
 };
 
+export interface Repeat_Options<D, I> extends Array_Options<D, I> {
+    count?: Numeric;
+    bytes?: Numeric;
+}
+
 export class Byte_Repeat<D, I> extends Byte_Array_Class<D, I> {
-    count: Numeric;
-    constructor(count: Numeric, options: Array_Options<D, I>, ...elements: Array<Struct<I | null>>) {
+    count?: Numeric;
+    bytes?: Numeric;
+    constructor(options: Repeat_Options<D, I>, ...elements: Array<Meta_Struct<I>>) {
         super(options, ...elements);
+        const {count, bytes} = options;
+        if (count === undefined && bytes === undefined) {
+            throw new Error("One of count or bytes must specified in options.")
+        }
         this.count = count;
+        this.bytes = bytes;
     }
 
     protected __pack_loop<E>(data: E, {data_view, byte_offset = 0, little_endian, context}: Pack_Options, fetcher: Fetch<E, I>, store: (result: Packed) => void) {
         let offset = 0;
-        const count = numeric(this.count, context);
-        for (let i = 0; i < count; i++) {
-            offset += super.__pack_loop(data, {data_view, byte_offset: byte_offset + offset, little_endian, context}, fetcher, store);
+        if (this.count !== undefined) {
+            const count = numeric(this.count, context);
+            for (let i = 0; i < count; i++) {
+                offset += super.__pack_loop(data, {data_view, byte_offset: byte_offset + offset, little_endian, context}, fetcher, store);
+            }
+        } else if (this.bytes !== undefined) {
+            const bytes = numeric(this.bytes, context);
+            while (offset < bytes) {
+                offset += super.__pack_loop(data, {data_view, byte_offset: byte_offset + offset, little_endian, context}, fetcher, store);
+            }
+            if (offset > bytes) {
+                throw new Error(`Cannot pack into ${bytes} bytes.`);
+            }
+        } else {
+            throw new Error("One of count or bytes must specified in options.")
         }
         return offset;
     }
 
     protected __parse_loop(data_view: DataView, {byte_offset = 0, little_endian, context}: Parse_Options, deliver: Deliver<I>) {
         let offset = 0;
-        const count = numeric(this.count, context);
-        for (let i = 0; i < count; i++) {
-            offset += super.__parse_loop(data_view, {byte_offset: byte_offset + offset, little_endian, context}, deliver);
+        if (this.count !== undefined) {
+            const count = numeric(this.count, context);
+            for (let i = 0; i < count; i++) {
+                offset += super.__parse_loop(data_view, {byte_offset: byte_offset + offset, little_endian, context}, deliver);
+            }
+        } else if (this.bytes !== undefined) {
+            const bytes = numeric(this.bytes, context);
+            while (offset < bytes) {
+                offset += super.__parse_loop(data_view, {byte_offset: byte_offset + offset, little_endian, context}, deliver);
+            }
+            if (offset > bytes) {
+                throw new Error(`Cannot parse exactly ${bytes} bytes.`);
+            }
+        } else {
+            throw new Error("One of count or bytes must specified in options.")
         }
         return offset;
     }
 }
 
-export const Repeat = <D, I>(count: Numeric, ...elements: Array<Array_Options<D, I> | Struct<I | null>>) => {
-    return new Byte_Repeat(count, extract_array_options(elements), ...elements as Array<Struct<I | null>>);
+export const Repeat = <D, I>(...elements: Array<Repeat_Options<D, I> | Meta_Struct<I>>) => {
+    return new Byte_Repeat(extract_array_options(elements), ...elements as Array<Meta_Struct<I>>);
 };
 
