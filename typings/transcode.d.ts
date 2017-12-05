@@ -116,7 +116,7 @@ export declare class Byte_Map_Class<D, I> extends Map<string, Meta_Struct<I>> {
         size: number;
     };
 }
-export declare const Byte_Map: <D, I>(options?: Transcoders<Map<string, I>, D> | [string, Meta_Struct<I>][] | undefined, iterable?: Transcoders<Map<string, I>, D> | [string, Meta_Struct<I>][] | undefined) => Byte_Map_Class<D, I>;
+export declare const Binary_Map: <D, I>(options?: Transcoders<Map<string, I>, D> | [string, Meta_Struct<I>][] | undefined, iterable?: Transcoders<Map<string, I>, D> | [string, Meta_Struct<I>][] | undefined) => Byte_Map_Class<D, I>;
 export declare type Array_Options<D, I> = Transcoders<Array<I>, D>;
 export interface Byte_Array_Class<D, I> extends Struct<D>, Array_Options<D, I>, Array<Meta_Struct<I>> {
 }
@@ -133,7 +133,7 @@ export declare class Byte_Array_Class<D, I> extends Array<Meta_Struct<I>> {
     };
     protected __parse_loop(data_view: DataView, {byte_offset, little_endian, context}: Parse_Options, deliver: Deliver<I>): number;
 }
-export declare const Byte_Array: <D, I>(...elements: (Transcoders<I[], D> | Meta_Struct<I>)[]) => Byte_Array_Class<D, I>;
+export declare const Binary_Array: <D, I>(...elements: (Transcoders<I[], D> | Meta_Struct<I>)[]) => Byte_Array_Class<D, I>;
 export interface Repeat_Options<D, I> extends Array_Options<D, I> {
     count?: Numeric;
     bytes?: Numeric;

@@ -362,7 +362,7 @@ export class Byte_Map_Class<D, I> extends Map<string, Meta_Struct<I>> {
     }
 }
 
-export const Byte_Map = <D, I>(options?: Map_Options<D, I> | Map_Iterable<I>, iterable?: Map_Iterable<I> | Map_Options<D, I>) => {
+export const Binary_Map = <D, I>(options?: Map_Options<D, I> | Map_Iterable<I>, iterable?: Map_Iterable<I> | Map_Options<D, I>) => {
     if (options instanceof Array) {
         const _ = iterable;
         iterable = options;
@@ -487,7 +487,7 @@ const extract_array_options = <D, I>(elements: Array<Meta_Struct<I> | Repeat_Opt
     return options;
 };
 
-export const Byte_Array = <D, I>(...elements: Array<Array_Options<D, I> | Meta_Struct<I>>) => {
+export const Binary_Array = <D, I>(...elements: Array<Array_Options<D, I> | Meta_Struct<I>>) => {
     return new Byte_Array_Class(extract_array_options(elements), ...elements as Array<Meta_Struct<I>>);
 };
 

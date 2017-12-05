@@ -227,7 +227,7 @@ export class Byte_Map_Class extends Map {
         return { data, size: offset };
     }
 }
-export const Byte_Map = (options, iterable) => {
+export const Binary_Map = (options, iterable) => {
     if (options instanceof Array) {
         const _ = iterable;
         iterable = options;
@@ -340,7 +340,7 @@ const extract_array_options = (elements) => {
     }
     return options;
 };
-export const Byte_Array = (...elements) => {
+export const Binary_Array = (...elements) => {
     return new Byte_Array_Class(extract_array_options(elements), ...elements);
 };
 export class Byte_Repeat extends Byte_Array_Class {

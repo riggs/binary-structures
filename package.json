@@ -1,7 +1,20 @@
 {
-  "name": "declarative-binary-serialization",
+  "name": "binary-struct",
   "version": "0.10.2",
-  "description": "Does what it says on the tin.",
+  "description": "Yet another declarative binary packer/parser, but built for modern browsers.",
+  "keywords": [
+    "binary",
+    "struct",
+    "parse",
+    "parser",
+    "pack",
+    "unpack",
+    "decode",
+    "encode",
+    "ArrayBuffer",
+    "bit",
+    "byte"
+  ],
   "main": "./dist/index.js",
   "typings": "./typings/index.d.ts",
   "directories": {
@@ -46,12 +59,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/riggs/declarative-binary-serialization.git"
+    "url": "git+https://github.com/riggs/binary-struct.git"
   },
   "author": "Benjamin Riggs (https://github.com/riggs/)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/riggs/declarative-binary-serialization/issues"
+    "url": "https://github.com/riggs/binary-struct/issues"
   },
-  "homepage": "https://github.com/riggs/declarative-binary-serialization#readme"
+  "homepage": "https://github.com/riggs/binary-struct#readme"
 }

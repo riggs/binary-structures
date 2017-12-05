@@ -1,11 +1,15 @@
-# declarative-binary-serialization
-Does what it says on the tin.
+# binary-struct
+Yet another declarative binary parser/packer, but built for modern browsers.
 
-It works, just needs better documentation and better test coverage.
+Specifically, built to support WebUSB.
+
+Documentation is coming, check the tests for examples for now.
+
+Test branch coverage is ~75%, which will also be improving along with the documentation.
 
 ## Example
 ```
-let report = Byte_Map({little_endian: true})
+let report = Binary_Map({little_endian: true})
     .set('size', Bits(2))
     .set('type', Bits(2, {decode: (value, context) => {
         if (value === 3) {
@@ -19,9 +23,14 @@ let report = Byte_Map({little_endian: true})
 
 
 ## API
-### Bits(size\[, {encode?, decode?}])
+### Bits
+`Bits(size: 1-7 \[, {encode?, decode?}])`
 
-### Uint(size\[, {encode?, decode?, little_endian?}])
+### Uint
+`Uint(size: 8 | 16 | 32 | 64 \[, {encode?, decode?, little_endian?}])`
+
+### Int
+`Int(size: 8 | 16 | 32 | 64 \[, {encode?, decode?, little_endian?}])`
 
 ### Repeat
 `Repeat({count?: Numeric, bytes?: Numeric, encode?, decode?, little_endian?}, ...elements)`:
