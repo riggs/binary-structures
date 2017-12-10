@@ -35,5 +35,5 @@ interface Window {
 
 /* Pushing this to the global object because of a deficiency in typescript. */
 interface SymbolConstructor {
-    Context_Parent: symbol;
+    Parent_Context: symbol;
 }

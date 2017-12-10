@@ -1,9 +1,6 @@
 import 'improved-map';
 
 import {
-    SerializationError,
-    Context_Array,
-    Context_Map,
     Encoder,
     Decoder,
     inspect,
@@ -137,20 +134,20 @@ describe("Branch", () => {
     describe("parsing", () => {
         test("simple case", () => {
             const data_view = new DataView(new Uint8Array([1, 0xAB, 0xCD]).buffer);
-            const byte_array = Binary_Array(Uint(8), Branch((context: Context_Array) => context[0], {1: Uint(16, {little_endian: true}), 2: Uint(16)}));
+            const byte_array = Binary_Array(Uint(8), Branch((context: Array<number>) => context[0], {1: Uint(16, {little_endian: true}), 2: Uint(16)}));
             expect(byte_array.parse(data_view)).toEqual({data: [1, 0xCDAB], size: 3});
             data_view.setUint8(0, 2);
             expect(byte_array.parse(data_view)).toEqual({data: [2, 0xABCD], size: 3});
         });
         test("default value", () => {
             const data_view = new DataView(new Uint8Array([42, 0xAB, 0xCD]).buffer);
-            const byte_array = Binary_Array(Uint(8), Branch((context: Context_Array) => context[0], {1: Uint(16, {little_endian: true})}, Uint(16)));
+            const byte_array = Binary_Array(Uint(8), Branch((context: Array<number>) => context[0], {1: Uint(16, {little_endian: true})}, Uint(16)));
             expect(byte_array.parse(data_view)).toEqual({data: [42, 0xABCD], size: 3});
         });
         test("bad choice", () => {
             const data_view = new DataView(new Uint8Array([42, 0xAB, 0xCD]).buffer);
-            const byte_array = Binary_Array(Uint(8), Branch((context: Context_Array) => context[0], {1: Uint(16, {little_endian: true}), 2: Uint(16)}));
-            expect(() => byte_array.parse(data_view)).toThrow(SerializationError);
+            const byte_array = Binary_Array(Uint(8), Branch((context: Array<number>) => context[0], {1: Uint(16, {little_endian: true}), 2: Uint(16)}));
+            expect(() => byte_array.parse(data_view)).toThrow(/Choice 42 not in/);
         });
     });
 });
@@ -189,9 +186,9 @@ describe("Binary_Array", () => {
             const lower = now % 2 ** 32;
             const upper = Math.floor(now / 2 ** 32);
             const data_view = new DataView(new Uint32Array([lower, upper]).buffer);
-            const byte_array = Binary_Array({little_endian: true}, Uint(64));
+            let byte_array = Binary_Array({little_endian: true}, Uint(64));
             expect(byte_array.parse(data_view)).toEqual({data: [now], size: 8});
-            byte_array.little_endian = false;
+            byte_array = Binary_Array(Uint(64));
             expect(byte_array.parse(data_view, {little_endian: true})).toEqual({data: [now], size: 8});
         });
         test("embedded arrays", () => {
@@ -286,7 +283,7 @@ describe("Repeat", () => {
             const repeat = Repeat({count: 3}, Uint(8), Uint(8));
             expect(repeat.parse(data_view)).toEqual({data: [6, 5, 4, 3, 2, 1], size: 6});
         });
-        test("bytes function case", () => {
+        test("trivial bytes function case", () => {
             const data_view = new DataView(new Uint8Array([6, 5, 4, 3, 2, 1]).buffer);
             const repeat = Repeat({bytes: () => 6}, Uint(8), Uint(8), Uint(8));
             expect(repeat.parse(data_view)).toEqual({data: [6, 5, 4, 3, 2, 1], size: 6});
@@ -333,10 +330,9 @@ describe("Binary_Map", () => {
             const lower = now % 2 ** 32;
             const upper = Math.floor(now / 2 ** 32);
             const data_view = new DataView(new Uint32Array([lower, upper]).buffer);
-            const byte_map = Binary_Map({decode, little_endian: true}).set('now', Uint(64));
+            let byte_map = Binary_Map({decode, little_endian: true}).set('now', Uint(64));
             expect(byte_map.parse(data_view)).toEqual({data: {now: now}, size: 8});
-            byte_map.little_endian = undefined;
-            byte_map.set('now', Uint(64, {little_endian: true}));
+            byte_map = Binary_Map({decode}).set('now', Uint(64, {little_endian: true}));
             expect(byte_map.parse(data_view)).toEqual({data: {now: now}, size: 8});
         });
         test("embedded maps", () => {
@@ -368,7 +364,7 @@ describe("Byte_Buffer", () => {
         });
         test("in a Binary_Array", () => {
             const data_view = new DataView(new Uint8Array([0, 1, 2, 3, 4]).buffer);
-            const byte_array = Binary_Array(Uint(8), Byte_Buffer((ctx: Context_Array) => ctx[0]!, {decode: (buffer) => Array.from(new Uint8Array(buffer))}))
+            const byte_array = Binary_Array(Uint(8), Byte_Buffer((ctx: Array<number>) => ctx[0]!, {decode: (buffer: ArrayBuffer) => Array.from(new Uint8Array(buffer))}));
             for (let i = 1; i < 5; i++) {
                 data_view.setUint8(0, i);
                 expect(byte_array.parse(data_view)).toEqual({data: [i, [1, 2, 3, 4].slice(0, i)], size: i + 1});
