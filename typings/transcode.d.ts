@@ -7,7 +7,6 @@ export interface Parent_Context<P> {
 export declare type Parented<E extends Parent_Context<P>, P> = E;
 export declare type Mapped<T> = Map<string, T>;
 export declare type Parented_Type<E, Parent> = Parented<E & Parent_Context<Parent>, Parent>;
-export declare type Parented_Primitive<P> = Parented_Type<Primitive, P>;
 export declare type Parented_Map<Encoded, Parent> = Parented_Type<Mapped<Encoded>, Parent>;
 export declare type Parented_Array<Encoded, Parent> = Parented_Type<Array<Encoded>, Parent>;
 export declare type Encoder<Decoded, Encoded> = <Source, Parent>(decoded: Decoded, context?: Parented<Source, Parent>) => Encoded;
@@ -85,9 +84,16 @@ export interface Choices<S, D> {
     [choice: string]: Struct<S, D>;
 }
 export declare const Branch: <S, D, P>(chooser: Chooser<S | D, P>, choices: Choices<S, D>, default_choice?: Struct<S, D> | undefined) => Struct<S, D>;
-export declare const Embed: <S, D, I>(thing: Struct<S, D>) => {
-    pack: Packer<S | I[], D | I>;
-    parse: Parser<S | (I[] & Parent_Context<S>) | (Map<string, I> & Parent_Context<S>), D>;
+export interface Embed_Packer<S, D, I> {
+    <P>(source_data: Parented<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Array<I>, I>): Packed;
+    <P>(source_data: Parented<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Parented<S, P>, D>): Packed;
+}
+export interface Embed_Parser<Source, Decoded> {
+    (data_view: DataView, options?: Parse_Options<Source>, deliver?: Deliver<Decoded>): Parsed<Decoded>;
+}
+export declare const Embed: <S, D, I>(embedded: Struct<S, D>) => {
+    pack: <P>(source_data: S | D, options?: Pack_Options | undefined, fetch?: Fetcher<S, D> | Fetcher<I[], I> | undefined) => Packed;
+    parse: (data_view: DataView, options?: Parse_Options<S> | Parse_Options<(I[] & Parent_Context<S>) | (Map<string, I> & Parent_Context<S>)>, deliver?: Deliver<D> | undefined) => Parsed<D>;
 };
 export declare type Map_Item<I> = Struct<Mapped<I>, I>;
 export declare type Map_Iterable<I> = Array<[string, Map_Item<I>]>;
@@ -109,6 +115,4 @@ export interface Repeat_Options<S, D, I> extends Array_Transcoders<D, I> {
     count?: Numeric<Parented_Array<I, S>>;
     bytes?: Numeric<Parented_Array<I, S>>;
 }
-export interface Repeat<S, D, I> extends Binary_Array<S, D, I> {
-}
-export declare const Repeat: <S, D, I>(...elements: (Repeat_Options<S, D, I> | Struct<I[], I>)[]) => Binary_Array<{}, D, I>;
+export declare const Repeat: <S, D, I>(...elements: (Repeat_Options<S, D, I> | Struct<I[], I>)[]) => Binary_Array<S, D, I>;

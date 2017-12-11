@@ -159,27 +159,27 @@ export const Branch = (chooser, choices, default_choice) => {
     };
     return { parse, pack };
 };
-export const Embed = (thing) => {
+export const Embed = (embedded) => {
     const pack = (source_data, options, fetch) => {
-        if (thing instanceof Array) {
-            return thing.pack(source_data, options, undefined, fetch);
+        if (embedded instanceof Array) {
+            return embedded.pack(source_data, options, undefined, fetch);
         }
-        else if (thing instanceof Map) {
-            return thing.pack(source_data, options, undefined);
+        else if (embedded instanceof Map) {
+            return embedded.pack(source_data, options, undefined);
         }
         else {
-            return thing.pack(source_data, options, fetch);
+            return embedded.pack(source_data, options, fetch);
         }
     };
     const parse = (data_view, options = {}, deliver) => {
-        if (thing instanceof Array) {
-            return thing.parse(data_view, options, undefined, options.context);
+        if (embedded instanceof Array) {
+            return embedded.parse(data_view, options, undefined, options.context);
         }
-        else if (thing instanceof Map) {
-            return thing.parse(data_view, options, undefined, options.context);
+        else if (embedded instanceof Map) {
+            return embedded.parse(data_view, options, undefined, options.context);
         }
         else {
-            return thing.parse(data_view, options, deliver);
+            return embedded.parse(data_view, options, deliver);
         }
     };
     return { pack, parse };
@@ -188,7 +188,6 @@ export const Binary_Map = (transcoders = {}, iterable) => {
     if (transcoders instanceof Array) {
         [transcoders, iterable] = [iterable, transcoders];
     }
-    // return new Byte_Map_Class<D, I>(transcoders as Map_Transcoders<D, I> || {} , iterable as Map_Iterable<I>);
     const { encode, decode, little_endian: _little_endian } = transcoders;
     const map = new Map();
     map.pack = (source_data, options = {}, fetch) => {
@@ -268,7 +267,6 @@ const extract_array_options = (elements = []) => {
     return {};
 };
 export const Binary_Array = (...elements) => {
-    // return new Byte_Array_Class(extract_array_options(elements), ...elements as Array<Array_Item<I>>);
     const { encode, decode, little_endian: _little_endian } = extract_array_options(elements);
     const array = new Array(...elements);
     array.pack = (source_data, options = {}, fetch, fetcher) => {
@@ -327,7 +325,6 @@ export const Binary_Array = (...elements) => {
     return array;
 };
 export const Repeat = (...elements) => {
-    // return new Byte_Repeat(extract_array_options(elements), ...elements as Array<Meta_Struct<I>>);
     const { count, bytes, encode, decode, little_endian } = extract_array_options(elements);
     const array = Binary_Array({ encode, decode, little_endian }, ...elements);
     const pack_loop = array.__pack_loop;

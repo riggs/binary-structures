@@ -280,23 +280,30 @@ export const Branch = <S, D, P>(chooser: Chooser<S | D, P>, choices: Choices<S, 
     return {parse, pack};
 };
 
-export const Embed = <S, D, I>(thing: Struct<S, D>) => {
-    const pack: Packer<S, D> = (source_data, options, fetch) => {
-        if (thing instanceof Array) {
-            return (thing as Binary_Array<S, D, I>).pack(source_data as S, options, undefined, fetch as Fetcher<Array<I>, I>);
-        } else if (thing instanceof Map) {
-            return (thing as Binary_Map<S, D, I>).pack(source_data as S, options, undefined);
+export interface Embed_Packer<S, D, I> {
+    <P>(source_data: Parented<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Array<I>, I>): Packed;
+    <P>(source_data: Parented<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Parented<S, P>, D>): Packed;
+}
+export interface Embed_Parser<Source, Decoded> {
+    (data_view: DataView, options?: Parse_Options<Source>, deliver?: Deliver<Decoded>): Parsed<Decoded>;
+}
+export const Embed = <S, D, I>(embedded: Struct<S, D>) => {
+    const pack = <P>(source_data: Parented<S | D, P>, options?: Pack_Options, fetch?: Fetcher<S, D> | Fetcher<Array<I>, I>): Packed => {
+        if (embedded instanceof Array) {
+            return (embedded as Binary_Array<S, D, I>).pack(source_data as Parented<S, P>, options, undefined, fetch as Fetcher<Array<I>, I>);
+        } else if (embedded instanceof Map) {
+            return (embedded as Binary_Map<S, D, I>).pack(source_data as Parented<S, P>, options, undefined);
         } else {
-            return thing.pack(source_data as S, options, fetch as Fetcher<S, D>);
+            return embedded.pack(source_data, options, fetch as Fetcher<S, D>);
         }
     };
-    const parse: Parser<S, D> = (data_view, options = {}, deliver) => {
-        if (thing instanceof Array) {
-            return (thing as Binary_Array<S, D, I>).parse(data_view, options as Parse_Options<S>, undefined, options.context as Parented_Array<I, S>);
-        } else if (thing instanceof Map) {
-            return (thing as Binary_Map<S, D, I>).parse(data_view, options as Parse_Options<S>, undefined, options.context as Parented_Map<I, S>);
+    const parse = (data_view: DataView, options: Parse_Options<S> | Parse_Options<Parented_Type<Array<I> | Mapped<I>, S>> = {}, deliver?: Deliver<D>): Parsed<D> => {
+        if (embedded instanceof Array) {
+            return (embedded as Binary_Array<S, D, I>).parse(data_view, options as Parse_Options<S>, undefined, options.context as Parented_Array<I, S>);
+        } else if (embedded instanceof Map) {
+            return (embedded as Binary_Map<S, D, I>).parse(data_view, options as Parse_Options<S>, undefined, options.context as Parented_Map<I, S>);
         } else {
-            return thing.parse(data_view, options as Parse_Options<S>, deliver);
+            return embedded.parse(data_view, options as Parse_Options<S>, deliver);
         }
     };
     return {pack, parse}
