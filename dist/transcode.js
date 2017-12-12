@@ -1,16 +1,16 @@
 import { Bits_Sizes, Uint_Sizes, Int_Sizes, Float_Sizes, uint_pack, int_pack, float_pack, uint_parse, int_parse, float_parse, utf8_pack, utf8_parse } from './serialization';
-/* Need to hang Parent_Context off the global Symbol because of Typescript deficiency */
-Symbol.Parent_Context = Symbol.for("Parent_Context"); // Even this doesn't work with set_parent/remove_parent
-export const Parent_Context = Symbol.for("Parent_Context");
+/* Need to hang Context off the global Symbol because of Typescript deficiency */
+Symbol.Context = Symbol.for("Context");
+export const Context = Symbol.for("Context");
 const set_parent = (data, parent) => {
     if (parent !== undefined) {
-        data[Symbol.Parent_Context] = parent;
+        data[Symbol.Context] = parent;
     }
     return data;
 };
 const remove_parent = (data, delete_flag) => {
     if (delete_flag) {
-        delete data[Symbol.Parent_Context];
+        delete data[Symbol.Context];
     }
     return data;
 };
@@ -22,6 +22,7 @@ export const inspect = {
     encode: inspect_transcoder,
     decode: inspect_transcoder,
 };
+/* Called by pack */
 const fetch_and_encode = ({ source_data, fetch, encode }) => {
     let fetched;
     if (fetch !== undefined) {
@@ -37,13 +38,14 @@ const fetch_and_encode = ({ source_data, fetch, encode }) => {
         return fetched;
     }
 };
-const decode_and_deliver = ({ parsed, decode, deliver }) => {
+/* Called by parse */
+const decode_and_deliver = ({ encoded, decode, context, deliver }) => {
     let decoded;
     if (decode !== undefined) {
-        decoded = decode(parsed);
+        decoded = decode(encoded, context);
     }
     else {
-        decoded = parsed;
+        decoded = encoded;
     }
     if (deliver !== undefined) {
         deliver(decoded);

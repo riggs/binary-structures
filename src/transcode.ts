@@ -19,45 +19,45 @@ import {
 
 export type Primitive = number | string | ArrayBuffer;
 
-/* Need to hang Parent_Context off the global Symbol because of Typescript deficiency */
-Symbol.Parent_Context = Symbol.for("Parent_Context");   // Even this doesn't work with set_parent/remove_parent
-export const Parent_Context = Symbol.for("Parent_Context");
+/* Need to hang Context off the global Symbol because of Typescript deficiency */
+Symbol.Context = Symbol.for("Context");
+export const Context = Symbol.for("Context");
 
-export interface Parent_Context<P> {
-    [Symbol.Parent_Context]?: P;
+export interface Context<C> {
+    [Symbol.Context]?: C;
 }
 
-export type Parented<E extends Parent_Context<P>, P> = E;
+export type Contextualized<E extends Context<C>, C> = E;
 
-const set_parent = <T, P>(data: T, parent?: P): Parented<T, P> => {
-    if (parent !== undefined) {
-        (data as Parent_Context<P>)[Symbol.Parent_Context] = parent;
+const set_context = <T, C>(data: T, context?: C): Contextualized<T, C> => {
+    if (context !== undefined) {
+        (data as Context<C>)[Symbol.Context] = context;
     }
     return data;
 };
 
-const remove_parent = <T, P>(data: Parented<T, P>, delete_flag: boolean): T => {
+const remove_context = <T, C>(data: Contextualized<T, C>, delete_flag: boolean): T => {
     if (delete_flag) {
-        delete (data as Parent_Context<P>)[Symbol.Parent_Context];
+        delete (data as Context<C>)[Symbol.Context];
     }
     return data;
 };
 
 export type Mapped<T> = Map<string, T>;
 
-export type Parented_Type<E, Parent> = Parented<E & Parent_Context<Parent>, Parent>;
+export type Context_Type<E, P> = Contextualized<E & Context<P>, P>;
 
-export type Parented_Map<Encoded, Parent> = Parented_Type<Mapped<Encoded>, Parent>;
+export type Context_Map<Encoded, Context> = Context_Type<Mapped<Encoded>, Context>;
 
-export type Parented_Array<Encoded, Parent> = Parented_Type<Array<Encoded>, Parent>;
+export type Context_Array<Encoded, Context> = Context_Type<Array<Encoded>, Context>;
 
 /* These functions provided by library consumer to convert data to usable structures. */
-export type Encoder<Decoded, Encoded> = <Source, Parent>(decoded: Decoded, context?: Parented<Source, Parent>) => Encoded;
-export type Decoder<Encoded, Decoded> = <Parent>(parsed: Parented<Encoded, Parent>) => Decoded;
+export type Encoder<Decoded, Encoded, Context> = (decoded: Decoded, context?: Context) => Encoded;
+export type Decoder<Encoded, Decoded, Context> = (encoded: Encoded, context?: Context) => Decoded;
 
-export interface Transcoders<Encoded, Decoded> {
-    encode?: Encoder<Decoded, Encoded>;
-    decode?: Decoder<Encoded, Decoded>;
+export interface Transcoders<Encoded, Decoded, Context> {
+    encode?: Encoder<Decoded, Encoded, Context>;
+    decode?: Decoder<Encoded, Decoded, Context>;
     little_endian?: boolean;
 }
 
@@ -72,10 +72,10 @@ export const inspect = {
 };
 
 /** A function to fetch the data to be packed.
- *  It is provided by the code handling the data input and called by the packer function to fetch the data to pack.
+ *  It is provided by the code handling the input data and called by the packer function to fetch the data to pack.
  */
-export interface Fetcher<Source, Decoded> {
-    (source_data: Source): Decoded;
+export interface Fetcher<Decoded> {
+    (): Decoded;
 }
 
 /** A function to deliver the parsed result to the correct place.
@@ -85,16 +85,15 @@ export interface Deliver<Decoded> {
     (data: Decoded): void;
 }
 
-export interface Common_Options {
+export interface Common_Options<Context> {
     byte_offset?: number;
     little_endian?: boolean;
+    context?: Context;
 }
 
-export interface Parse_Options<Encoded_Parent> extends Common_Options {
-    context?: Encoded_Parent
-}
+export interface Parse_Options<C> extends Common_Options<C> {}
 
-export interface Pack_Options extends Common_Options {
+export interface Pack_Options<C> extends Common_Options<C> {
     data_view?: DataView;
 }
 
@@ -108,72 +107,67 @@ export interface Parsed<Decoded> {
     size: Size; /* In Bytes */
 }
 
-export interface Packer<Source, Decoded> {
-    <Parent>(source_data: Parented<Source | Decoded, Parent>, options?: Pack_Options, fetch?: Fetcher<Parented<Source, Parent>, Decoded>): Packed;
+export interface Packer<Decoded, Context> {
+    (source: Decoded | Fetcher<Decoded>, options?: Pack_Options<Context>): Packed;
 }
 
-export interface Parser<Source, Decoded> {
-    (data_view: DataView, options?: Parse_Options<Source>, deliver?: Deliver<Decoded>): Parsed<Decoded>;
+export interface Parser<Decoded, Context> {
+    (data_view: DataView, options?: Parse_Options<Context>, deliver?: Deliver<Decoded>): Parsed<Decoded>;
 }
 
 /* Explicitly imposing that, for custom Transcoders, output format from deserialization must match input format to serialization. */
-export interface Struct<Source, Decoded> {
-    pack: Packer<Source, Decoded>;
-    parse: Parser<Source, Decoded>;
+export interface Struct<Decoded, Context> {
+    pack: Packer<Decoded, Context>;
+    parse: Parser<Decoded, Context>;
 }
 
-interface fetch_and_encode_options<S, P, D, E> {
-    source_data: Parented<S | D, P> | E;
-    fetch?: Fetcher<S, D | E>;
-    encode?: Encoder<D, E>;
-}
-
-const fetch_and_encode = <S, P, D, E>({source_data, fetch, encode}: fetch_and_encode_options<S, P, D, E>): E => {
-    let fetched;
-    if (fetch !== undefined) {
-        fetched = fetch(source_data as S);
+/* Called by pack */
+const fetch_and_encode = <D, E, C>({source, encode, context}: {source: Fetcher<D | E> | D | E, encode?: Encoder<D, E, C>, context: C}): E => {
+    let decoded;
+    if (typeof source === 'function') {
+        decoded = source();
     } else {
-        fetched = source_data as Parented<D, P> | E;
+        decoded = source as D | E;
     }
-    if (encode !== undefined) {
-        return encode(fetched as D, source_data);
+    if (typeof encode === 'function') {
+        return encode(decoded as D, context);
     } else {
-        return fetched as E;
+        return decoded as E;
     }
 };
 
-const decode_and_deliver = <E, D, P>({parsed, decode, deliver}: {parsed: Parented<E, P> | D, decode?: Decoder<E, D>, deliver?: Deliver<D>}): D => {
-    let decoded: D;
-    if (decode !== undefined) {
-        decoded = decode(parsed as Parented<E, P>);
+/* Called by parse */
+const decode_and_deliver = <E, D, C>({encoded, decode, context, deliver}: {encoded: E | D, decode?: Decoder<E, D, C>, context?: C, deliver?: Deliver<D>}): D => {
+    let decoded;
+    if (typeof decode === 'function') {
+        decoded = decode(encoded as E, context);
     } else {
-        decoded = parsed as D;
+        decoded = encoded as D;
     }
-    if (deliver !== undefined) {
+    if (typeof deliver === 'function') {
         deliver(decoded);
     }
     return decoded;
 };
 
 const factory = <E extends Primitive>(serializer: Serializer<E>, deserializer: Deserializer<E>, verify_size: (bits: number) => boolean) => {
-    return (<S, D>(bits: number, transcoders: Transcoders<E, D> = {}): Struct<S, D> => {
+    return (<D, C>(bits: number, transcoders: Transcoders<E, D, C> = {}): Struct<D, C> => {
         if(!verify_size(bits)) {
             throw new Error(`Invalid size: ${bits}`);
         }
-        const {encode, decode} = transcoders;
+        const {encode, decode, little_endian: LE} = transcoders;
 
-        const pack: Packer<S, D> = (source_data, options = {}, fetch) => {
-            const {data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, little_endian = transcoders.little_endian} = options;
-            const data = fetch_and_encode({source_data, fetch, encode});
-            /* Don't need to set parent on `data` because serializer doesn't care about parent context. */
-            const size = (serializer(data, {bits, data_view, byte_offset, little_endian}) / 8);
+        const pack: Packer<D, C> = (source, options = {}) => {
+            const {data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, little_endian = LE, context} = options;
+            const encoded = fetch_and_encode({source, encode, context}) as E;
+            const size = (serializer(encoded, {bits, data_view, byte_offset, little_endian}) / 8);
             return {size, buffer: data_view.buffer};
         };
 
-        const parse: Parser<S, D> = (data_view, options = {}, deliver) => {
-            const {byte_offset = 0, little_endian = transcoders.little_endian, context} = options;
-            const parsed = deserializer({bits, data_view, byte_offset, little_endian});
-            const data = decode_and_deliver({parsed: set_parent(parsed, context), decode, deliver});
+        const parse: Parser<D, C> = (data_view, options = {}, deliver) => {
+            const {byte_offset = 0, little_endian = LE, context} = options;
+            const encoded = deserializer({bits, data_view, byte_offset, little_endian});
+            const data = decode_and_deliver({encoded, context, decode, deliver}) as D;
             return {data, size: bits / 8};
         };
         return {pack, parse};
@@ -190,9 +184,9 @@ export const Float = factory(float_pack, float_parse, (s) => Float_Sizes.include
 
 export const Utf8 = factory(utf8_pack, utf8_parse, (s) => s % 8 === 0 && s >= 0);
 
-export type Numeric<T> = number | {bits?: number, bytes?: number} | (<P>(context?: Parented<T, P>) => number);
+export type Numeric<C> = number | {bits?: number, bytes?: number} | ((context?: C) => number);
 
-const numeric = <T, P>(n: Numeric<T>, context?: Parented<T, P>): number => {
+const numeric = <C>(n: Numeric<C>, context?: C): number => {
     if (typeof n === 'object') {
         let {bits = 0, bytes = 0} = n;
         n = bits / 8 + bytes;
@@ -213,12 +207,12 @@ const numeric = <T, P>(n: Numeric<T>, context?: Parented<T, P>): number => {
  * @param {Numeric} length
  * @param {Transcoders<ArrayBuffer, any>} transcoders
  */
-export const Byte_Buffer = <S, D, P>(length: Numeric<Parented<S | D, P>>, transcoders: Transcoders<ArrayBuffer, D> = {}): Struct<S, D> => {
+export const Byte_Buffer = <D, C>(length: Numeric<C>, transcoders: Transcoders<ArrayBuffer, D, C> = {}) => {
     const {encode, decode} = transcoders;
-    const pack = (source_data: Parented<S | D, P>, options: Pack_Options = {}, fetch: Fetcher<Parented<S, P>, D>) => {
-        const {data_view, byte_offset = 0} = options;
-        const size = numeric(length, source_data as S);
-        const buffer = fetch_and_encode({source_data, fetch, encode});
+    const pack = (source: D | Fetcher<D>, options: Pack_Options<C> = {}): Packed => {
+        const {data_view, byte_offset = 0, context} = options;
+        const size = numeric(length, context);
+        const buffer = fetch_and_encode({source, encode, context});
         if (size !== buffer.byteLength) {
             throw new Error(`Length miss-match. Expected length: ${size}, actual bytelength: ${buffer.byteLength}`)
         }
@@ -230,36 +224,36 @@ export const Byte_Buffer = <S, D, P>(length: Numeric<Parented<S | D, P>>, transc
         });
         return {size, buffer: data_view.buffer}
     };
-    const parse = (data_view: DataView, options: Parse_Options<Parented<S | D, P>> = {}, deliver: Deliver<D>) => {
+    const parse = (data_view: DataView, options: Parse_Options<C> = {}, deliver?: Deliver<D>) => {
         const {byte_offset = 0, context} = options;
         const size = numeric(length, context);
         const buffer = data_view.buffer.slice(byte_offset, byte_offset + size);
-        const data = decode_and_deliver({parsed: set_parent(buffer, context), decode, deliver});
+        const data = decode_and_deliver({encoded: buffer, context, decode, deliver});
         return {data, size};
     };
     return {pack, parse}
 };
 
-export const Padding = <S, P>(size: Numeric<Parented<S, P>>): Struct<S, any> => {
-    const pack: Packer<S, any> = (source_data, options = {}, fetch) => {
-        size = numeric(size, source_data as S);
+export const Padding = <C>(size: Numeric<C>): Struct<any, C> => {
+    const pack: Packer<any, C> = (source, options = {}) => {
+        size = numeric(size, options.context) as number;
         return {size, buffer: options.data_view === undefined ? new ArrayBuffer(Math.ceil(size)) : options.data_view.buffer}
     };
-    const parse: Parser<S, any> = (data_view, options = {}, deliver) => {
-        size = numeric(size, options.context);
+    const parse: Parser<any, C> = (data_view, options = {}, deliver) => {
+        size = numeric(size, options.context) as number;
         return {size, data: null};
     };
     return {pack, parse}
 };
 
-export type Chooser<T, P> = (context?: Parented<T, P>) => number | string;
-export interface Choices<S, D> {
-    [choice: number]: Struct<S, D>;
-    [choice: string]: Struct<S, D>;
+export type Chooser<C> = (context?: C) => number | string;
+export interface Choices<D, C> {
+    [choice: number]: Struct<D, C>;
+    [choice: string]: Struct<D, C>;
 }
 
-export const Branch = <S, D, P>(chooser: Chooser<S | D, P>, choices: Choices<S, D>, default_choice?: Struct<S, D>): Struct<S, D> => {
-    const choose = (source?: Parented<S | D, P>): Struct<S, D> => {
+export const Branch = <D, C>(chooser: Chooser<C>, choices: Choices<D, C>, default_choice?: Struct<D, C>): Struct<D, C> => {
+    const choose = (source?: C): Struct<D, C> => {
         let choice = chooser(source);
         if (choices.hasOwnProperty(choice)) {
             return choices[choice];
@@ -271,37 +265,39 @@ export const Branch = <S, D, P>(chooser: Chooser<S | D, P>, choices: Choices<S, 
             }
         }
     };
-    const pack: Packer<S, D> = (source_data, options = {}, fetch) => {
-        return choose(source_data as S | D).pack(source_data, options, fetch);
+    const pack: Packer<D, C> = (source, options = {}) => {
+        return choose(options.context).pack(source, options);
     };
-    const parse: Parser<S, D> = (data_view, options = {}, deliver) => {
+    const parse: Parser<D, C> = (data_view, options = {}, deliver) => {
         return choose(options.context).parse(data_view, options, deliver);
     };
     return {parse, pack};
 };
 
-export interface Embed_Packer<S, D, I> {
-    <P>(source_data: Parented<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Array<I>, I>): Packed;
-    <P>(source_data: Parented<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Parented<S, P>, D>): Packed;
+export interface Embed_Packer<I, D, C> {
+    (source: D | Fetcher<D>, options?: Pack_Options<C>): Packed;
+    (source: Fetcher<I>, options?: Pack_Options<D>, fetcher: Fetcher<I>): Packed;
+    <P>(source_data: Contextualized<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Array<I>, I>): Packed;
+    <P>(source_data: Contextualized<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Contextualized<S, P>, D>): Packed;
 }
 export interface Embed_Parser<Source, Decoded> {
     (data_view: DataView, options?: Parse_Options<Source>, deliver?: Deliver<Decoded>): Parsed<Decoded>;
 }
-export const Embed = <S, D, I>(embedded: Struct<S, D>) => {
-    const pack = <P>(source_data: Parented<S | D, P>, options?: Pack_Options, fetch?: Fetcher<S, D> | Fetcher<Array<I>, I>): Packed => {
+export const Embed = <C, ED, EC>(embedded: Struct<Contextualized<EC, C>, C> | Struct<ED, EC>): Struct<ED, EC> => {
+    const pack = (source: Fetcher<ED>, options: Pack_Options<EC>): Packed => {
         if (embedded instanceof Array) {
-            return (embedded as Binary_Array<S, D, I>).pack(source_data as Parented<S, P>, options, undefined, fetch as Fetcher<Array<I>, I>);
+            return (embedded as Binary_Array<ED, Contextualized<EC, C>, C>).pack(options.context!, options.context[Symbol.Context], source);
         } else if (embedded instanceof Map) {
-            return (embedded as Binary_Map<S, D, I>).pack(source_data as Parented<S, P>, options, undefined);
+            return (embedded as Binary_Map<ED, Contextualized<EC, C>, C>).pack(options.context!, options.context[Symbol.Context], source);
         } else {
-            return embedded.pack(source_data, options, fetch as Fetcher<S, D>);
+            return (embedded as Struct<ED, EC>).pack(source, options);
         }
     };
-    const parse = (data_view: DataView, options: Parse_Options<S> | Parse_Options<Parented_Type<Array<I> | Mapped<I>, S>> = {}, deliver?: Deliver<D>): Parsed<D> => {
+    const parse = (data_view: DataView, options: Parse_Options<S> | Parse_Options<Context_Type<Array<I> | Mapped<I>, S>> = {}, deliver?: Deliver<D>): Parsed<D> => {
         if (embedded instanceof Array) {
-            return (embedded as Binary_Array<S, D, I>).parse(data_view, options as Parse_Options<S>, undefined, options.context as Parented_Array<I, S>);
+            return (embedded as Binary_Array<S, D, I>).parse(data_view, options as Parse_Options<S>, undefined, options.context as Context_Array<I, S>);
         } else if (embedded instanceof Map) {
-            return (embedded as Binary_Map<S, D, I>).parse(data_view, options as Parse_Options<S>, undefined, options.context as Parented_Map<I, S>);
+            return (embedded as Binary_Map<S, D, I>).parse(data_view, options as Parse_Options<S>, undefined, options.context as Context_Map<I, S>);
         } else {
             return embedded.parse(data_view, options as Parse_Options<S>, deliver);
         }
@@ -309,38 +305,41 @@ export const Embed = <S, D, I>(embedded: Struct<S, D>) => {
     return {pack, parse}
 };
 
-export type Map_Item<I> = Struct<Mapped<I>, I>;
+export type Map_Item<I> = Struct<I, Mapped<I>>;
 export type Map_Iterable<I> = Array<[string, Map_Item<I>]>;
-export type Map_Transcoders<D, I> = Transcoders<Mapped<I>, D>;
+export type Map_Transcoders<I, D, C> = Transcoders<Mapped<I>, D, C>;
 
-export interface Binary_Map<S, D, I> extends Mapped<Map_Item<I>>, Struct<S, D> {
-    parse: (data_view: DataView, options?: Parse_Options<S>, deliver?: Deliver<D>, results?: Parented_Map<I, S>) => Parsed<D>;
+export interface Binary_Map<I, D, C> extends Mapped<Map_Item<I>>, Struct<D, C> {
+    pack: (source: D | Fetcher<D>, options?: Pack_Options<C>, fetcher?: Fetcher<I>) => Packed;
+    parse: (data_view: DataView, options?: Parse_Options<C>, deliver?: Deliver<D>, results?: Context_Map<I, C>) => Parsed<D>;
 }
 
-export const Binary_Map = <S, D, I>(transcoders: Map_Transcoders<D, I> | Map_Iterable<I> = {}, iterable?: Map_Iterable<I> | Map_Transcoders<D, I>) => {
+export const Binary_Map = <I, D, C>(transcoders: Map_Transcoders<I, D, C> | Map_Iterable<I> = {}, iterable?: Map_Iterable<I> | Map_Transcoders<I, D, C>): Binary_Map<I, D, C> => {
     if (transcoders instanceof Array) {
-        [transcoders, iterable] = [iterable as Map_Transcoders<D, I>, transcoders as Map_Iterable<I>];
+        [transcoders, iterable] = [iterable as Map_Transcoders<I, D, C>, transcoders as Map_Iterable<I>];
     }
-    const {encode, decode, little_endian: _little_endian} = transcoders;
+    const {encode, decode, little_endian: LE} = transcoders;
 
-    const map = new Map() as Binary_Map<S, D, I>;
+    const map = new Map() as Binary_Map<I, D, C>;
 
-    map.pack = (source_data, options = {}, fetch) => {
-        let {data_view, byte_offset = 0, little_endian = _little_endian} = options;
-        const encoded = fetch_and_encode({source_data, fetch, encode});
+    map.pack = (source, options = {}, fetcher) => {
+        let {data_view, byte_offset = 0, little_endian = LE, context} = options;
+        const encoded = fetch_and_encode({source, encode, context});
         const packed: Packed[] = [];
-        const fetcher = (key: string) => (source: typeof encoded) => {
-            const value = source.get(key);
-            if (value === undefined) {
-                throw new Error(`Insufficient data for serialization: ${key} not in ${source_data}`)
-            }
-            return value;
-        };
+        if (fetcher === undefined) {
+            set_context(encoded, context);
+            // Can I repurpose source in Embed?
+            fetcher = (key: string) => () => {
+                const value = encoded.get(key);
+                if (value === undefined) {
+                    throw new Error(`Insufficient data for serialization: ${key} not in ${encoded}`)
+                }
+                return value;
+            };
+        }
         let offset = 0;
         for (const [key, item] of map) {
-            const {size, buffer} = item.pack(set_parent(encoded, source_data),
-                                             {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian},
-                                             fetcher(key));
+            const {size, buffer} = item.pack(fetcher(key), {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context: encoded});
             if (data_view === undefined) {
                 packed.push({size, buffer});
             }
@@ -353,10 +352,10 @@ export const Binary_Map = <S, D, I>(transcoders: Map_Transcoders<D, I> | Map_Ite
     };
 
     map.parse = (data_view, options = {}, deliver, results) => {
-        const {byte_offset = 0, little_endian = _little_endian, context} = options;
+        const {byte_offset = 0, little_endian = LE, context} = options;
         let remove_parent_symbol = false;
         if (results === undefined) {
-            results = set_parent(new Map() as Mapped<I>, context);
+            results = set_context(new Map() as Mapped<I>, context);
             remove_parent_symbol = true;
         }
         let offset = 0;
@@ -366,8 +365,8 @@ export const Binary_Map = <S, D, I>(transcoders: Map_Transcoders<D, I> | Map_Ite
                                             (data) => results!.set(key, data));
             offset += size;
         }
-        const data = decode_and_deliver<Mapped<I>, D, S>({parsed: results, decode, deliver});
-        remove_parent(results, remove_parent_symbol);
+        const data = decode_and_deliver<Mapped<I>, D, C>({encoded: results, decode, context, deliver});
+        remove_context(results, remove_parent_symbol);
         return {data, size: offset};
     };
 
@@ -376,7 +375,7 @@ export const Binary_Map = <S, D, I>(transcoders: Map_Transcoders<D, I> | Map_Ite
 
 const concat_buffers = (packed: Packed[], byte_length: number) => {
     const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
-    let _offset = 0;
+    let byte_offset = 0;
     for (const {size, buffer} of packed) {
         /* Copy all the data from the returned buffers into one grand buffer. */
         const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer));
@@ -389,9 +388,9 @@ const concat_buffers = (packed: Packed[], byte_length: number) => {
             array.push(Bits((size % 1) * 8));
         }
         /* Pack the bytes into the buffer */
-        array.pack(bytes, {data_view, byte_offset: _offset});
+        array.pack(bytes, {data_view, byte_offset});
 
-        _offset += size;
+        byte_offset += size;
     }
     return data_view;
 };
@@ -411,31 +410,32 @@ const extract_array_options = <Items, Transcoders>(elements: Array<Items | Trans
     return {} as Transcoders;
 };
 
-export type Array_Item<I> = Struct<Array<I>, I>;
-export type Array_Transcoders<D, I> = Transcoders<Array<I>, D>;
+export type Array_Item<I> = Struct<I, Array<I>>;
+export type Array_Transcoders<I, D, C> = Transcoders<Array<I>, D, C>;
 
-export interface Binary_Array<S, D, I> extends Array<Array_Item<I>>, Struct<S, D> {
-    pack: <P>(source_data: Parented<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Parented<S, P>, D>, fetcher?: Fetcher<Array<I>, I>) => Packed;
-    __pack_loop: (data: Array<I>, {data_view, byte_offset, little_endian}: Pack_Options, fetcher: Fetcher<Array<I>, I>, store: (result: Packed) => void) => number;
-    parse: (data_view: DataView, options?: Parse_Options<S>, deliver?: Deliver<D>, results?: Parented_Array<I, S>) => Parsed<D>;
-    __parse_loop: (data_view: DataView, {byte_offset, little_endian, context}: Parse_Options<Parented_Array<I, S>>, deliver: Deliver<I>) => number;
+export interface Binary_Array<I, D, C> extends Array<Array_Item<I>>, Struct<D, C> {
+    pack: (source: D | Fetcher<D>, options?: Pack_Options<C>, fetcher?: Fetcher<I>) => Packed;
+    __pack_loop: (fetcher: Fetcher<I>, options: Pack_Options<Array<I>>, store: (result: Packed) => void) => number;
+    parse: (data_view: DataView, options?: Parse_Options<C>, deliver?: Deliver<D>, results?: Context_Array<I, C>) => Parsed<D>;
+    __parse_loop: (data_view: DataView, options: Parse_Options<Context_Array<I, C>>, deliver: Deliver<I>) => number;
 }
 
-export const Binary_Array = <S, D, I>(...elements: Array<Array_Transcoders<D, I> | Array_Item<I>>): Binary_Array<S, D, I> => {
-    const {encode, decode, little_endian: _little_endian} = extract_array_options(elements) as Array_Transcoders<D, I>;
+export const Binary_Array = <I, D, C>(...elements: Array<Array_Transcoders<I, D, C> | Array_Item<I>>): Binary_Array<I, D, C> => {
+    const {encode, decode, little_endian: LE} = extract_array_options(elements) as Array_Transcoders<I, D, C>;
 
-    const array = new Array(...elements as Array<Array_Item<I>>) as Binary_Array<S, D, I>;
+    const array = new Array(...elements as Array<Array_Item<I>>) as Binary_Array<I, D, C>;
 
-    array.pack = (source_data, options = {}, fetch, fetcher?: Fetcher<Array<I>, I>) => {
-        let {data_view, byte_offset = 0, little_endian = _little_endian} = options;
-        const encoded = fetch_and_encode({source_data, fetch, encode});
+    array.pack = (source, options = {}, fetcher) => {
+        let {data_view, byte_offset = 0, little_endian = LE, context} = options;
+        const encoded = fetch_and_encode({source, encode, context});
         const packed: Packed[] = [];
         if (fetcher === undefined) {
+            set_context(encoded, context);
             const iterator = encoded[Symbol.iterator]();
-            fetcher = (source_data) => {
+            fetcher = () => {
                 const value = iterator.next().value;
                 if (value === undefined) {
-                    throw new Error(`Insufficient data for serialization: ${source_data}`)
+                    throw new Error(`Insufficient data for serialization: ${encoded}`)
                 }
                 return value;
             }
@@ -445,17 +445,17 @@ export const Binary_Array = <S, D, I>(...elements: Array<Array_Transcoders<D, I>
                 packed.push(result);
             }
         };
-        const size = array.__pack_loop(set_parent(encoded, source_data), {data_view, byte_offset, little_endian}, fetcher, store);
+        const size = array.__pack_loop(fetcher, {data_view, byte_offset, little_endian, context: encoded}, store);
         if (data_view === undefined) {
             data_view = concat_buffers(packed, size);
         }
         return {size, buffer: data_view.buffer};
     };
 
-    array.__pack_loop = (data, {data_view, byte_offset = 0, little_endian}, fetcher, store) => {
+    array.__pack_loop = (fetcher, {data_view, byte_offset = 0, little_endian, context}, store) => {
         let offset = 0;
         for (const item of array) {
-            const {size, buffer} = item.pack(data, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian}, fetcher);
+            const {size, buffer} = item.pack(fetcher, {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context});
             store({size, buffer});
             offset += size;
         }
@@ -463,14 +463,14 @@ export const Binary_Array = <S, D, I>(...elements: Array<Array_Transcoders<D, I>
     };
 
     array.parse = (data_view, options = {}, deliver, results) => {
-        const {byte_offset = 0, little_endian = _little_endian, context} = options;
+        const {byte_offset = 0, little_endian = LE, context} = options;
         let remove_parent_symbol = false;
         if (results === undefined) {
-            results = set_parent(new Array(), context);
+            results = set_context(new Array(), context);
             remove_parent_symbol = true;
         }
         const size = array.__parse_loop(data_view, {byte_offset, little_endian, context: results}, (data: I) => results!.push(data));
-        const data = decode_and_deliver({parsed: remove_parent(results, remove_parent_symbol), decode, deliver});
+        const data = decode_and_deliver({encoded: remove_context(results, remove_parent_symbol), context, decode, deliver});
         return {data, size};
     };
 
@@ -486,30 +486,30 @@ export const Binary_Array = <S, D, I>(...elements: Array<Array_Transcoders<D, I>
     return array;
 };
 
-export interface Repeat_Options<S, D, I> extends Array_Transcoders<D, I> {
-    count?: Numeric<Parented_Array<I, S>>;
-    bytes?: Numeric<Parented_Array<I, S>>;
+export interface Repeat_Options<I, D, C> extends Array_Transcoders<I, D, C> {
+    count?: Numeric<Context_Array<I, C>>;
+    bytes?: Numeric<Context_Array<I, C>>;
 }
 
-export const Repeat = <S, D, I>(...elements: Array<Repeat_Options<S, D, I> | Array_Item<I>>): Binary_Array<S, D, I> => {
-    const {count, bytes, encode, decode, little_endian} = extract_array_options(elements) as Repeat_Options<S, D, I>;
+export const Repeat = <I, D, C>(...elements: Array<Repeat_Options<I, D, C> | Array_Item<I>>): Binary_Array<I, D, C> => {
+    const {count, bytes, encode, decode, little_endian} = extract_array_options(elements) as Repeat_Options<I, D, C>;
 
-    const array = Binary_Array<S, D, I>({encode, decode, little_endian}, ...elements as Array<Array_Item<I>>);
+    const array = Binary_Array<I, D, C>({encode, decode, little_endian}, ...elements as Array<Array_Item<I>>);
 
     const pack_loop = array.__pack_loop;
     const parse_loop = array.__parse_loop;
 
-    array.__pack_loop = (data, {data_view, byte_offset = 0, little_endian}, fetcher, store) => {
+    array.__pack_loop = (fetcher, {data_view, byte_offset = 0, little_endian, context}, store) => {
         let offset = 0;
         if (count !== undefined) {
-            const repeat = numeric(count, data);
+            const repeat = numeric(count, context);
             for (let i = 0; i < repeat; i++) {
-                offset += pack_loop(data, {data_view, byte_offset: byte_offset + offset, little_endian}, fetcher, store);
+                offset += pack_loop(fetcher, {data_view, byte_offset: byte_offset + offset, little_endian, context}, store);
             }
         } else if (bytes !== undefined) {
-            const repeat = numeric(bytes, data);
+            const repeat = numeric(bytes, context);
             while (offset < repeat) {
-                offset += pack_loop(data, {data_view, byte_offset: byte_offset + offset, little_endian}, fetcher, store);
+                offset += pack_loop(fetcher, {data_view, byte_offset: byte_offset + offset, little_endian, context}, store);
             }
             if (offset > repeat) {
                 throw new Error(`Cannot pack into ${repeat} bytes.`);
