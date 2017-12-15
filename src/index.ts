@@ -23,30 +23,30 @@ export {
 
 import {Uint, Int, Float, Padding, Struct} from './transcode';
 
-export const Uint8: Struct<number, number> = Uint(8);
-export const Uint16: Struct<number, number> = Uint(16);
-export const Uint16LE: Struct<number, number> = Uint(16, {little_endian: true});
+export const Uint8: Struct<number, any> = Uint(8);
+export const Uint16: Struct<number, any> = Uint(16);
+export const Uint16LE: Struct<number, any> = Uint(16, {little_endian: true});
 export const Uint16BE = Uint16;
-export const Uint32: Struct<number, number> = Uint(32);
-export const Uint32LE: Struct<number, number> = Uint(32, {little_endian: true});
+export const Uint32: Struct<number, any> = Uint(32);
+export const Uint32LE: Struct<number, any> = Uint(32, {little_endian: true});
 export const Uint32BE = Uint32;
-export const Uint64: Struct<number, number> = Uint(64);
-export const Uint64LE: Struct<number, number> = Uint(64, {little_endian: true});
+export const Uint64: Struct<number, any> = Uint(64);
+export const Uint64LE: Struct<number, any> = Uint(64, {little_endian: true});
 export const Uint64BE = Uint64;
 
-export const Int8: Struct<number, number> = Int(8);
-export const Int16: Struct<number, number> = Int(8);
-export const Int16LE: Struct<number, number> = Int(16, {little_endian: true});
+export const Int8: Struct<number, any> = Int(8);
+export const Int16: Struct<number, any> = Int(8);
+export const Int16LE: Struct<number, any> = Int(16, {little_endian: true});
 export const Int16BE = Int16;
-export const Int32: Struct<number, number> = Int(32);
-export const Int32LE: Struct<number, number> = Int(32, {little_endian: true});
+export const Int32: Struct<number, any> = Int(32);
+export const Int32LE: Struct<number, any> = Int(32, {little_endian: true});
 export const Int32BE = Int32;
 
-export const Float32: Struct<number, number> = Float(32);
-export const Float32LE: Struct<number, number> = Float(32, {little_endian: true});
+export const Float32: Struct<number, any> = Float(32);
+export const Float32LE: Struct<number, any> = Float(32, {little_endian: true});
 export const Float32BE = Float32;
-export const Float64: Struct<number, number> = Float(64);
-export const Float64LE: Struct<number, number> = Float(64, {little_endian: true});
+export const Float64: Struct<number, any> = Float(64);
+export const Float64LE: Struct<number, any> = Float(64, {little_endian: true});
 export const Float64BE = Float64;
 
 /** Noöp structure
