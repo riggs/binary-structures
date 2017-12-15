@@ -1,5 +1,13 @@
-
-import {uint_pack, int_pack, float_pack, uint_parse, int_parse, float_parse, utf8_pack, utf8_parse} from '../src/serialization';
+import {
+    uint_pack,
+    int_pack,
+    float_pack,
+    uint_parse,
+    int_parse,
+    float_parse,
+    utf8_pack,
+    utf8_parse
+} from '../src/serialization';
 
 // TODO: Test invalid sizes
 

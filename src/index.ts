@@ -12,9 +12,7 @@ export {
     Utf8,
     Embed,
     Binary_Array,
-    // Byte_Array_Class,   /* Will be unnecessary in next TypeScript release */
     Binary_Map,
-    // Byte_Map_Class,   /* Will be unnecessary in next TypeScript release */
     Byte_Buffer,
     Repeat,
     Branch,

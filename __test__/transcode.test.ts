@@ -22,15 +22,28 @@ import {
 // TODO: Test parsing with insufficient ArrayBuffer
 
 describe("Bits", () => {
-    test("simplest parse cases", () => {
-        const data_view = new DataView(new Uint8Array([0xFF]).buffer);
-        expect(Bits(1).parse(data_view)).toEqual({size: 1/8, data: 1});
-        expect(Bits(2).parse(data_view)).toEqual({size: 2/8, data: 3});
-        expect(Bits(3).parse(data_view)).toEqual({size: 3/8, data: 7});
-        expect(Bits(4).parse(data_view)).toEqual({size: 4/8, data: 15});
-        expect(Bits(5).parse(data_view)).toEqual({size: 5/8, data: 31});
-        expect(Bits(6).parse(data_view)).toEqual({size: 6/8, data: 63});
-        expect(Bits(7).parse(data_view)).toEqual({size: 7/8, data: 127});
+    describe("parsing", () => {
+        test("simplest cases", () => {
+            const data_view = new DataView(new Uint8Array([0xFF]).buffer);
+            expect(Bits(1).parse(data_view)).toEqual({size: 1/8, data: 1});
+            expect(Bits(2).parse(data_view)).toEqual({size: 2/8, data: 3});
+            expect(Bits(3).parse(data_view)).toEqual({size: 3/8, data: 7});
+            expect(Bits(4).parse(data_view)).toEqual({size: 4/8, data: 15});
+            expect(Bits(5).parse(data_view)).toEqual({size: 5/8, data: 31});
+            expect(Bits(6).parse(data_view)).toEqual({size: 6/8, data: 63});
+            expect(Bits(7).parse(data_view)).toEqual({size: 7/8, data: 127});
+        });
+    });
+    describe("packing", () => {
+        describe("given DataView", () => {
+            // TODO
+        });
+        describe("given no DataView", () => {
+            // TODO
+        });
+    });
+    describe("bad size", () => {
+        // TODO
     });
 });
 describe("Uint", () => {
@@ -130,6 +143,54 @@ describe("Uint", () => {
         });
     });
 });
+describe("Int", () => {
+    describe("parsing", () => {
+        // TODO
+    });
+    describe("packing", () => {
+        describe("given DataView", () => {
+            // TODO
+        });
+        describe("given no DataView", () => {
+            // TODO
+        });
+    });
+    describe("bad size", () => {
+        // TODO
+    });
+});
+describe("Float", () => {
+    describe("parsing", () => {
+        // TODO
+    });
+    describe("packing", () => {
+        describe("given DataView", () => {
+            // TODO
+        });
+        describe("given no DataView", () => {
+            // TODO
+        });
+    });
+    describe("bad size", () => {
+        // TODO
+    });
+});
+describe("Utf8", () => {
+    describe("parsing", () => {
+        // TODO
+    });
+    describe("packing", () => {
+        describe("given DataView", () => {
+            // TODO
+        });
+        describe("given no DataView", () => {
+            // TODO
+        });
+    });
+    describe("bad size", () => {
+        // TODO
+    });
+});
 describe("Branch", () => {
     describe("parsing", () => {
         test("simple case", () => {
@@ -162,7 +223,7 @@ describe("Padding", () => {
     });
     describe("Packing", () => {
         describe("Given DataView", () => {
-
+            // TODO
         });
         describe("Given no DataView", () => {
             test("bytes & bits", () => {
@@ -356,7 +417,7 @@ describe("Binary_Map", () => {
             });
         });
         describe("Given no DataView", () => {
-
+            // TODO
         });
     });
 });

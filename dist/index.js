@@ -1,9 +1,5 @@
 export { hex, hex_buffer } from './serialization';
-export { inspect, Bits, Uint, Int, Float, Utf8, Embed, Binary_Array, 
-// Byte_Array_Class,   /* Will be unnecessary in next TypeScript release */
-Binary_Map, 
-// Byte_Map_Class,   /* Will be unnecessary in next TypeScript release */
-Byte_Buffer, Repeat, Branch, Padding } from './transcode';
+export { inspect, Bits, Uint, Int, Float, Utf8, Embed, Binary_Array, Binary_Map, Byte_Buffer, Repeat, Branch, Padding } from './transcode';
 import { Uint, Int, Float, Padding } from './transcode';
 export const Uint8 = Uint(8);
 export const Uint16 = Uint(16);
