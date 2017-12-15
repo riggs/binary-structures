@@ -28,4 +28,4 @@ export declare const Float64BE: Struct<number, number>;
  *
  * @type {Struct}
  */
-export declare const Pass: Struct<{}, any>;
+export declare const Pass: Struct<any, {}>;

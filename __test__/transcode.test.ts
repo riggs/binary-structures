@@ -201,6 +201,11 @@ describe("Binary_Array", () => {
             const byte_array = Binary_Array(Uint(8), Repeat(Uint(8), {count: 3}), Uint(8));
             expect(byte_array.parse(data_view)).toEqual({data: [0, [1, 2, 3], 4], size: 5});
         });
+        test("embedded repeat", () => {
+            const data_view = new DataView(new Uint8Array([0, 1, 2, 3, 4]).buffer);
+            const byte_array = Binary_Array(Uint(8), Embed(Repeat(Uint(8), {count: 3})), Uint(8));
+            expect(byte_array.parse(data_view)).toEqual({data: [0, 1, 2, 3, 4], size: 5});
+        });
     });
     describe("Packing", () => {
         describe("Given DataView", () => {

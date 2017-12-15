@@ -1,19 +1,20 @@
 import { Size } from './serialization';
 export declare type Primitive = number | string | ArrayBuffer;
 export declare const Context: symbol;
-export interface Context<P> {
-    [Symbol.Context]?: P;
+export interface Context<C> {
+    [Symbol.Context]?: C;
 }
-export declare type Contextualized<E extends Context<P>, P> = E;
+export declare type Contextualized<E extends Context<C>, C> = E;
 export declare type Mapped<T> = Map<string, T>;
-export declare type Context_Type<E, Parent> = Contextualized<E & Context<Parent>, Parent>;
-export declare type Context_Map<Encoded, Parent> = Context_Type<Mapped<Encoded>, Parent>;
-export declare type Context_Array<Encoded, Parent> = Context_Type<Array<Encoded>, Parent>;
-export declare type Encoder<Decoded, Encoded> = <Context>(decoded: Decoded, context?: Context) => Encoded;
-export declare type Decoder<Encoded, Decoded> = <Context>(encoded: Encoded, context?: Context) => Decoded;
-export interface Transcoders<Encoded, Decoded> {
-    encode?: Encoder<Decoded, Encoded>;
-    decode?: Decoder<Encoded, Decoded>;
+export declare type Context_Type<E, P> = Contextualized<E & Context<P>, P>;
+export declare type Context_Map<Encoded, Context> = Context_Type<Mapped<Encoded>, Context>;
+export declare type Context_Array<Encoded, Context> = Context_Type<Array<Encoded>, Context>;
+export declare type Context_Iterable<Encoded, Context> = Context_Map<Encoded, Context> | Context_Array<Encoded, Context>;
+export declare type Encoder<Decoded, Encoded, Context> = (decoded: Decoded, context?: Context) => Encoded;
+export declare type Decoder<Encoded, Decoded, Context> = (encoded: Encoded, context?: Context) => Decoded;
+export interface Transcoders<Encoded, Decoded, Context> {
+    encode?: Encoder<Decoded, Encoded, Context>;
+    decode?: Decoder<Encoded, Decoded, Context>;
     little_endian?: boolean;
 }
 export declare const inspect_transcoder: <T>(data: T, context?: any) => T;
@@ -22,10 +23,10 @@ export declare const inspect: {
     decode: <T>(data: T, context?: any) => T;
 };
 /** A function to fetch the data to be packed.
- *  It is provided by the code handling the data input and called by the packer function to fetch the data to pack.
+ *  It is provided by the code handling the input data and called by the packer function to fetch the data to pack.
  */
-export interface Fetcher<Source, Decoded> {
-    (source_data: Source): Decoded;
+export interface Fetcher<Decoded> {
+    (): Decoded;
 }
 /** A function to deliver the parsed result to the correct place.
  *  It is provided by the code managing the results container and called by the parser function with the parsed data.
@@ -51,68 +52,65 @@ export interface Parsed<Decoded> {
     data: Decoded;
     size: Size;
 }
-export interface Packer<Source, Decoded> {
-    <Context>(source_data: Source | Decoded, options?: Pack_Options<Context>, fetch?: Fetcher<Source, Decoded>): Packed;
+export interface Packer<Decoded, Context> {
+    (source: Decoded | Fetcher<Decoded>, options?: Pack_Options<Context>): Packed;
 }
-export interface Parser<Source, Decoded> {
-    (data_view: DataView, options?: Parse_Options<Source>, deliver?: Deliver<Decoded>): Parsed<Decoded>;
+export interface Parser<Decoded, Context> {
+    (data_view: DataView, options?: Parse_Options<Context>, deliver?: Deliver<Decoded>): Parsed<Decoded>;
 }
-export interface Struct<Source, Decoded> {
-    pack: Packer<Source, Decoded>;
-    parse: Parser<Source, Decoded>;
+export interface Struct<Decoded, Context> {
+    pack: Packer<Decoded, Context>;
+    parse: Parser<Decoded, Context>;
 }
-export declare const Bits: <S, D>(bits: number, transcoders?: Transcoders<number, D>) => Struct<S, D>;
-export declare const Uint: <S, D>(bits: number, transcoders?: Transcoders<number, D>) => Struct<S, D>;
-export declare const Int: <S, D>(bits: number, transcoders?: Transcoders<number, D>) => Struct<S, D>;
-export declare const Float: <S, D>(bits: number, transcoders?: Transcoders<number, D>) => Struct<S, D>;
-export declare const Utf8: <S, D>(bits: number, transcoders?: Transcoders<string, D>) => Struct<S, D>;
-export declare type Numeric<T> = number | {
+export declare const Bits: <D, C>(bits: number, transcoders?: Transcoders<number, D, C>) => Struct<D, C>;
+export declare const Uint: <D, C>(bits: number, transcoders?: Transcoders<number, D, C>) => Struct<D, C>;
+export declare const Int: <D, C>(bits: number, transcoders?: Transcoders<number, D, C>) => Struct<D, C>;
+export declare const Float: <D, C>(bits: number, transcoders?: Transcoders<number, D, C>) => Struct<D, C>;
+export declare const Utf8: <D, C>(bits: number, transcoders?: Transcoders<string, D, C>) => Struct<D, C>;
+export declare type Numeric<C> = number | {
     bits?: number;
     bytes?: number;
-} | (<P>(context?: Contextualized<T, P>) => number);
+} | ((context?: C) => number);
 /** Byte_Buffer doesn't do any serialization, but just copies bytes to/from an ArrayBuffer that's a subset of the
  * serialized buffer. Byte_Buffer only works on byte-aligned data.
  *
  * @param {Numeric} length
  * @param {Transcoders<ArrayBuffer, any>} transcoders
  */
-export declare const Byte_Buffer: <S, D, P>(length: Numeric<S | D>, transcoders?: Transcoders<ArrayBuffer, D>) => Struct<S, D>;
-export declare const Padding: <S, P>(size: Numeric<S>) => Struct<S, any>;
-export declare type Chooser<T, P> = (context?: Contextualized<T, P>) => number | string;
-export interface Choices<S, D> {
-    [choice: number]: Struct<S, D>;
-    [choice: string]: Struct<S, D>;
-}
-export declare const Branch: <S, D, P>(chooser: Chooser<S | D, P>, choices: Choices<S, D>, default_choice?: Struct<S, D> | undefined) => Struct<S, D>;
-export interface Embed_Packer<S, D, I> {
-    <P>(source_data: Contextualized<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Array<I>, I>): Packed;
-    <P>(source_data: Contextualized<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Contextualized<S, P>, D>): Packed;
-}
-export interface Embed_Parser<Source, Decoded> {
-    (data_view: DataView, options?: Parse_Options<Source>, deliver?: Deliver<Decoded>): Parsed<Decoded>;
-}
-export declare const Embed: <S, D, I>(embedded: Struct<S, D>) => {
-    pack: <P>(source_data: S | D, options?: any, fetch?: Fetcher<S, D> | Fetcher<I[], I> | undefined) => Packed;
-    parse: (data_view: DataView, options?: Parse_Options<S> | Parse_Options<(I[] & Context<S>) | (Map<string, I> & Context<S>)>, deliver?: Deliver<D> | undefined) => Parsed<D>;
+export declare const Byte_Buffer: <D, C>(length: Numeric<C>, transcoders?: Transcoders<ArrayBuffer, D, C>) => {
+    pack: (source: D | Fetcher<D>, options?: Pack_Options<C>) => Packed;
+    parse: (data_view: DataView, options?: Parse_Options<C>, deliver?: Deliver<D> | undefined) => {
+        data: D;
+        size: number;
+    };
 };
-export declare type Map_Item<I> = Struct<Mapped<I>, I>;
+export declare const Padding: <C>(size: Numeric<C>) => Struct<any, C>;
+export declare type Chooser<C> = (context?: C) => number | string;
+export interface Choices<D, C> {
+    [choice: number]: Struct<D, C>;
+    [choice: string]: Struct<D, C>;
+}
+export declare const Branch: <D, C>(chooser: Chooser<C>, choices: Choices<D, C>, default_choice?: Struct<D, C> | undefined) => Struct<D, C>;
+export declare const Embed: <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<Context_Iterable<D, S>, S> | Struct<D, C>) => Struct<D | (Map<string, D> & Context<S>) | (D[] & Context<S>), C>;
+export declare type Map_Item<I> = Struct<I, Mapped<I>>;
 export declare type Map_Iterable<I> = Array<[string, Map_Item<I>]>;
-export declare type Map_Transcoders<D, I> = Transcoders<Mapped<I>, D>;
-export interface Binary_Map<S, D, I> extends Mapped<Map_Item<I>>, Struct<S, D> {
-    parse: (data_view: DataView, options?: Parse_Options<S>, deliver?: Deliver<D>, results?: Context_Map<I, S>) => Parsed<D>;
+export declare type Map_Transcoders<I, D, C> = Transcoders<Mapped<I>, D, C>;
+export interface Binary_Map<I, D, C> extends Mapped<Map_Item<I>>, Struct<D, C> {
+    pack: (source: D | Fetcher<D>, options?: Pack_Options<C>, encoded?: Context_Map<I, C>) => Packed;
+    parse: (data_view: DataView, options?: Parse_Options<C>, deliver?: Deliver<D>, results?: Context_Map<I, C>) => Parsed<D>;
 }
-export declare const Binary_Map: <S, D, I>(transcoders?: Transcoders<Map<string, I>, D> | [string, Struct<Map<string, I>, I>][], iterable?: Transcoders<Map<string, I>, D> | [string, Struct<Map<string, I>, I>][] | undefined) => Binary_Map<S, D, I>;
-export declare type Array_Item<I> = Struct<Array<I>, I>;
-export declare type Array_Transcoders<D, I> = Transcoders<Array<I>, D>;
-export interface Binary_Array<S, D, I> extends Array<Array_Item<I>>, Struct<S, D> {
-    pack: <P>(source_data: Contextualized<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Contextualized<S, P>, D>, fetcher?: Fetcher<Array<I>, I>) => Packed;
-    __pack_loop: (data: Array<I>, {data_view, byte_offset, little_endian}: Pack_Options, fetcher: Fetcher<Array<I>, I>, store: (result: Packed) => void) => number;
-    parse: (data_view: DataView, options?: Parse_Options<S>, deliver?: Deliver<D>, results?: Context_Array<I, S>) => Parsed<D>;
-    __parse_loop: (data_view: DataView, {byte_offset, little_endian, context}: Parse_Options<Context_Array<I, S>>, deliver: Deliver<I>) => number;
+export declare const Binary_Map: <I, D, C>(transcoders?: Transcoders<Map<string, I>, D, C> | [string, Struct<I, Map<string, I>>][], iterable?: Transcoders<Map<string, I>, D, C> | [string, Struct<I, Map<string, I>>][] | undefined) => Binary_Map<I, D, C>;
+export declare type Array_Item<I> = Struct<I, Array<I>>;
+export declare type Array_Transcoders<I, D, C> = Transcoders<Array<I>, D, C>;
+export interface Binary_Array<I, D, C> extends Array<Array_Item<I>>, Struct<D, C> {
+    pack: (source: D | Fetcher<D>, options?: Pack_Options<C>, fetcher?: Fetcher<I>) => Packed;
+    __pack_loop: (fetcher: Fetcher<I>, options: Pack_Options<Array<I>>, store: (result: Packed) => void) => number;
+    parse: (data_view: DataView, options?: Parse_Options<C>, deliver?: Deliver<D>, results?: Context_Array<I, C>) => Parsed<D>;
+    __parse_loop: (data_view: DataView, options: Parse_Options<Context_Array<I, C>>, deliver: Deliver<I>) => number;
 }
-export declare const Binary_Array: <S, D, I>(...elements: (Transcoders<I[], D> | Struct<I[], I>)[]) => Binary_Array<S, D, I>;
-export interface Repeat_Options<S, D, I> extends Array_Transcoders<D, I> {
-    count?: Numeric<Context_Array<I, S>>;
-    bytes?: Numeric<Context_Array<I, S>>;
+export declare const Binary_Array: <I, D, C>(...elements: (Transcoders<I[], D, C> | Struct<I, I[]>)[]) => Binary_Array<I, D, C>;
+export interface Repeat_Options<I, D, C> extends Array_Transcoders<I, D, C> {
+    count?: Numeric<Context_Array<I, C>>;
+    bytes?: Numeric<Context_Array<I, C>>;
 }
-export declare const Repeat: <S, D, I>(...elements: (Repeat_Options<S, D, I> | Struct<I[], I>)[]) => Binary_Array<S, D, I>;
+export declare const Repeat: <I, D, C>(...elements: (Repeat_Options<I, D, C> | Struct<I, I[]>)[]) => Binary_Array<I, D, C>;

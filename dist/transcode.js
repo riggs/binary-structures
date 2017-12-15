@@ -2,13 +2,13 @@ import { Bits_Sizes, Uint_Sizes, Int_Sizes, Float_Sizes, uint_pack, int_pack, fl
 /* Need to hang Context off the global Symbol because of Typescript deficiency */
 Symbol.Context = Symbol.for("Context");
 export const Context = Symbol.for("Context");
-const set_parent = (data, parent) => {
-    if (parent !== undefined) {
-        data[Symbol.Context] = parent;
+const set_context = (data, context) => {
+    if (context !== undefined) {
+        data[Symbol.Context] = context;
     }
     return data;
 };
-const remove_parent = (data, delete_flag) => {
+const remove_context = (data, delete_flag) => {
     if (delete_flag) {
         delete data[Symbol.Context];
     }
@@ -23,31 +23,31 @@ export const inspect = {
     decode: inspect_transcoder,
 };
 /* Called by pack */
-const fetch_and_encode = ({ source_data, fetch, encode }) => {
-    let fetched;
-    if (fetch !== undefined) {
-        fetched = fetch(source_data);
+const fetch_and_encode = ({ source, encode, context }) => {
+    let decoded;
+    if (typeof source === 'function') {
+        decoded = source();
     }
     else {
-        fetched = source_data;
+        decoded = source;
     }
-    if (encode !== undefined) {
-        return encode(fetched, source_data);
+    if (typeof encode === 'function') {
+        return encode(decoded, context);
     }
     else {
-        return fetched;
+        return decoded;
     }
 };
 /* Called by parse */
 const decode_and_deliver = ({ encoded, decode, context, deliver }) => {
     let decoded;
-    if (decode !== undefined) {
+    if (typeof decode === 'function') {
         decoded = decode(encoded, context);
     }
     else {
         decoded = encoded;
     }
-    if (deliver !== undefined) {
+    if (typeof deliver === 'function') {
         deliver(decoded);
     }
     return decoded;
@@ -57,18 +57,17 @@ const factory = (serializer, deserializer, verify_size) => {
         if (!verify_size(bits)) {
             throw new Error(`Invalid size: ${bits}`);
         }
-        const { encode, decode } = transcoders;
-        const pack = (source_data, options = {}, fetch) => {
-            const { data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, little_endian = transcoders.little_endian } = options;
-            const data = fetch_and_encode({ source_data, fetch, encode });
-            /* Don't need to set parent on `data` because serializer doesn't care about parent context. */
-            const size = (serializer(data, { bits, data_view, byte_offset, little_endian }) / 8);
+        const { encode, decode, little_endian: LE } = transcoders;
+        const pack = (source, options = {}) => {
+            const { data_view = new DataView(new ArrayBuffer(Math.ceil(bits / 8))), byte_offset = 0, little_endian = LE, context } = options;
+            const encoded = fetch_and_encode({ source, encode, context });
+            const size = (serializer(encoded, { bits, data_view, byte_offset, little_endian }) / 8);
             return { size, buffer: data_view.buffer };
         };
         const parse = (data_view, options = {}, deliver) => {
-            const { byte_offset = 0, little_endian = transcoders.little_endian, context } = options;
-            const parsed = deserializer({ bits, data_view, byte_offset, little_endian });
-            const data = decode_and_deliver({ parsed: set_parent(parsed, context), decode, deliver });
+            const { byte_offset = 0, little_endian = LE, context } = options;
+            const encoded = deserializer({ bits, data_view, byte_offset, little_endian });
+            const data = decode_and_deliver({ encoded, context, decode, deliver });
             return { data, size: bits / 8 };
         };
         return { pack, parse };
@@ -103,10 +102,10 @@ const numeric = (n, context) => {
  */
 export const Byte_Buffer = (length, transcoders = {}) => {
     const { encode, decode } = transcoders;
-    const pack = (source_data, options = {}, fetch) => {
-        const { data_view, byte_offset = 0 } = options;
-        const size = numeric(length, source_data);
-        const buffer = fetch_and_encode({ source_data, fetch, encode });
+    const pack = (source, options = {}) => {
+        const { data_view, byte_offset = 0, context } = options;
+        const size = numeric(length, context);
+        const buffer = fetch_and_encode({ source, encode, context });
         if (size !== buffer.byteLength) {
             throw new Error(`Length miss-match. Expected length: ${size}, actual bytelength: ${buffer.byteLength}`);
         }
@@ -122,14 +121,14 @@ export const Byte_Buffer = (length, transcoders = {}) => {
         const { byte_offset = 0, context } = options;
         const size = numeric(length, context);
         const buffer = data_view.buffer.slice(byte_offset, byte_offset + size);
-        const data = decode_and_deliver({ parsed: set_parent(buffer, context), decode, deliver });
+        const data = decode_and_deliver({ encoded: buffer, context, decode, deliver });
         return { data, size };
     };
     return { pack, parse };
 };
 export const Padding = (size) => {
-    const pack = (source_data, options = {}, fetch) => {
-        size = numeric(size, source_data);
+    const pack = (source, options = {}) => {
+        size = numeric(size, options.context);
         return { size, buffer: options.data_view === undefined ? new ArrayBuffer(Math.ceil(size)) : options.data_view.buffer };
     };
     const parse = (data_view, options = {}, deliver) => {
@@ -153,8 +152,8 @@ export const Branch = (chooser, choices, default_choice) => {
             }
         }
     };
-    const pack = (source_data, options = {}, fetch) => {
-        return choose(source_data).pack(source_data, options, fetch);
+    const pack = (source, options = {}) => {
+        return choose(options.context).pack(source, options);
     };
     const parse = (data_view, options = {}, deliver) => {
         return choose(options.context).parse(data_view, options, deliver);
@@ -162,27 +161,31 @@ export const Branch = (chooser, choices, default_choice) => {
     return { parse, pack };
 };
 export const Embed = (embedded) => {
-    const pack = (source_data, options, fetch) => {
-        if (embedded instanceof Array) {
-            return embedded.pack(source_data, options, undefined, fetch);
+    const pack = (source, options = {}) => {
+        if (options.context !== undefined) {
+            const { context } = options;
+            options.context = context[Symbol.Context];
+            if (embedded instanceof Array) {
+                return embedded.pack(context, options, source);
+            }
+            else if (embedded instanceof Map) {
+                return embedded.pack(context, options, context);
+            }
         }
-        else if (embedded instanceof Map) {
-            return embedded.pack(source_data, options, undefined);
-        }
-        else {
-            return embedded.pack(source_data, options, fetch);
-        }
+        return embedded.pack(source, options);
     };
     const parse = (data_view, options = {}, deliver) => {
-        if (embedded instanceof Array) {
-            return embedded.parse(data_view, options, undefined, options.context);
+        if (options.context !== undefined) {
+            const { context } = options;
+            options.context = context[Symbol.Context];
+            if (embedded instanceof Array) {
+                return embedded.parse(data_view, options, undefined, context);
+            }
+            else if (embedded instanceof Map) {
+                return embedded.parse(data_view, options, undefined, context);
+            }
         }
-        else if (embedded instanceof Map) {
-            return embedded.parse(data_view, options, undefined, options.context);
-        }
-        else {
-            return embedded.parse(data_view, options, deliver);
-        }
+        return embedded.parse(data_view, options, deliver);
     };
     return { pack, parse };
 };
@@ -190,22 +193,26 @@ export const Binary_Map = (transcoders = {}, iterable) => {
     if (transcoders instanceof Array) {
         [transcoders, iterable] = [iterable, transcoders];
     }
-    const { encode, decode, little_endian: _little_endian } = transcoders;
-    const map = new Map();
-    map.pack = (source_data, options = {}, fetch) => {
-        let { data_view, byte_offset = 0, little_endian = _little_endian } = options;
-        const encoded = fetch_and_encode({ source_data, fetch, encode });
+    const { encode, decode, little_endian: LE } = transcoders;
+    const map = new Map((iterable || []));
+    map.pack = (source, options = {}, encoded) => {
         const packed = [];
-        const fetcher = (key) => (source) => {
-            const value = source.get(key);
+        let { data_view, byte_offset = 0, little_endian = LE, context } = options;
+        if (encoded === undefined) {
+            encoded = fetch_and_encode({ source, encode, context });
+            set_context(encoded, context);
+        }
+        /* Need to return a function to the `pack` chain to enable Embed with value checking. */
+        const fetcher = (key) => () => {
+            const value = encoded.get(key);
             if (value === undefined) {
-                throw new Error(`Insufficient data for serialization: ${key} not in ${source_data}`);
+                throw new Error(`Insufficient data for serialization: ${key} not in ${encoded}`);
             }
             return value;
         };
         let offset = 0;
         for (const [key, item] of map) {
-            const { size, buffer } = item.pack(set_parent(encoded, source_data), { data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian }, fetcher(key));
+            const { size, buffer } = item.pack(fetcher(key), { data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context: encoded });
             if (data_view === undefined) {
                 packed.push({ size, buffer });
             }
@@ -217,10 +224,10 @@ export const Binary_Map = (transcoders = {}, iterable) => {
         return { size: offset, buffer: data_view.buffer };
     };
     map.parse = (data_view, options = {}, deliver, results) => {
-        const { byte_offset = 0, little_endian = _little_endian, context } = options;
+        const { byte_offset = 0, little_endian = LE, context } = options;
         let remove_parent_symbol = false;
         if (results === undefined) {
-            results = set_parent(new Map(), context);
+            results = set_context(new Map(), context);
             remove_parent_symbol = true;
         }
         let offset = 0;
@@ -228,15 +235,15 @@ export const Binary_Map = (transcoders = {}, iterable) => {
             const { data, size } = item.parse(data_view, { byte_offset: byte_offset + offset, little_endian, context: results }, (data) => results.set(key, data));
             offset += size;
         }
-        const data = decode_and_deliver({ parsed: results, decode, deliver });
-        remove_parent(results, remove_parent_symbol);
+        const data = decode_and_deliver({ encoded: results, decode, context, deliver });
+        remove_context(results, remove_parent_symbol);
         return { data, size: offset };
     };
     return map;
 };
 const concat_buffers = (packed, byte_length) => {
     const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
-    let _offset = 0;
+    let byte_offset = 0;
     for (const { size, buffer } of packed) {
         /* Copy all the data from the returned buffers into one grand buffer. */
         const bytes = Array.from(new Uint8Array(buffer));
@@ -249,8 +256,8 @@ const concat_buffers = (packed, byte_length) => {
             array.push(Bits((size % 1) * 8));
         }
         /* Pack the bytes into the buffer */
-        array.pack(bytes, { data_view, byte_offset: _offset });
-        _offset += size;
+        array.pack(bytes, { data_view, byte_offset });
+        byte_offset += size;
     }
     return data_view;
 };
@@ -269,18 +276,19 @@ const extract_array_options = (elements = []) => {
     return {};
 };
 export const Binary_Array = (...elements) => {
-    const { encode, decode, little_endian: _little_endian } = extract_array_options(elements);
+    const { encode, decode, little_endian: LE } = extract_array_options(elements);
     const array = new Array(...elements);
-    array.pack = (source_data, options = {}, fetch, fetcher) => {
-        let { data_view, byte_offset = 0, little_endian = _little_endian } = options;
-        const encoded = fetch_and_encode({ source_data, fetch, encode });
+    array.pack = (source, options = {}, fetcher) => {
+        let { data_view, byte_offset = 0, little_endian = LE, context } = options;
+        const encoded = fetch_and_encode({ source, encode, context });
         const packed = [];
         if (fetcher === undefined) {
+            set_context(encoded, context);
             const iterator = encoded[Symbol.iterator]();
-            fetcher = (source_data) => {
+            fetcher = () => {
                 const value = iterator.next().value;
                 if (value === undefined) {
-                    throw new Error(`Insufficient data for serialization: ${source_data}`);
+                    throw new Error(`Insufficient data for serialization: ${encoded}`);
                 }
                 return value;
             };
@@ -290,30 +298,30 @@ export const Binary_Array = (...elements) => {
                 packed.push(result);
             }
         };
-        const size = array.__pack_loop(set_parent(encoded, source_data), { data_view, byte_offset, little_endian }, fetcher, store);
+        const size = array.__pack_loop(fetcher, { data_view, byte_offset, little_endian, context: encoded }, store);
         if (data_view === undefined) {
             data_view = concat_buffers(packed, size);
         }
         return { size, buffer: data_view.buffer };
     };
-    array.__pack_loop = (data, { data_view, byte_offset = 0, little_endian }, fetcher, store) => {
+    array.__pack_loop = (fetcher, { data_view, byte_offset = 0, little_endian, context }, store) => {
         let offset = 0;
         for (const item of array) {
-            const { size, buffer } = item.pack(data, { data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian }, fetcher);
+            const { size, buffer } = item.pack(fetcher, { data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context });
             store({ size, buffer });
             offset += size;
         }
         return offset;
     };
     array.parse = (data_view, options = {}, deliver, results) => {
-        const { byte_offset = 0, little_endian = _little_endian, context } = options;
+        const { byte_offset = 0, little_endian = LE, context } = options;
         let remove_parent_symbol = false;
         if (results === undefined) {
-            results = set_parent(new Array(), context);
+            results = set_context(new Array(), context);
             remove_parent_symbol = true;
         }
         const size = array.__parse_loop(data_view, { byte_offset, little_endian, context: results }, (data) => results.push(data));
-        const data = decode_and_deliver({ parsed: remove_parent(results, remove_parent_symbol), decode, deliver });
+        const data = decode_and_deliver({ encoded: remove_context(results, remove_parent_symbol), context, decode, deliver });
         return { data, size };
     };
     array.__parse_loop = (data_view, { byte_offset = 0, little_endian, context }, deliver) => {
@@ -331,18 +339,18 @@ export const Repeat = (...elements) => {
     const array = Binary_Array({ encode, decode, little_endian }, ...elements);
     const pack_loop = array.__pack_loop;
     const parse_loop = array.__parse_loop;
-    array.__pack_loop = (data, { data_view, byte_offset = 0, little_endian }, fetcher, store) => {
+    array.__pack_loop = (fetcher, { data_view, byte_offset = 0, little_endian, context }, store) => {
         let offset = 0;
         if (count !== undefined) {
-            const repeat = numeric(count, data);
+            const repeat = numeric(count, context);
             for (let i = 0; i < repeat; i++) {
-                offset += pack_loop(data, { data_view, byte_offset: byte_offset + offset, little_endian }, fetcher, store);
+                offset += pack_loop(fetcher, { data_view, byte_offset: byte_offset + offset, little_endian, context }, store);
             }
         }
         else if (bytes !== undefined) {
-            const repeat = numeric(bytes, data);
+            const repeat = numeric(bytes, context);
             while (offset < repeat) {
-                offset += pack_loop(data, { data_view, byte_offset: byte_offset + offset, little_endian }, fetcher, store);
+                offset += pack_loop(fetcher, { data_view, byte_offset: byte_offset + offset, little_endian, context }, store);
             }
             if (offset > repeat) {
                 throw new Error(`Cannot pack into ${repeat} bytes.`);

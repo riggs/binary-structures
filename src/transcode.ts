@@ -51,6 +51,8 @@ export type Context_Map<Encoded, Context> = Context_Type<Mapped<Encoded>, Contex
 
 export type Context_Array<Encoded, Context> = Context_Type<Array<Encoded>, Context>;
 
+export type Context_Iterable<Encoded, Context> = Context_Map<Encoded, Context> | Context_Array<Encoded, Context>;
+
 /* These functions provided by library consumer to convert data to usable structures. */
 export type Encoder<Decoded, Encoded, Context> = (decoded: Decoded, context?: Context) => Encoded;
 export type Decoder<Encoded, Decoded, Context> = (encoded: Encoded, context?: Context) => Decoded;
@@ -122,7 +124,7 @@ export interface Struct<Decoded, Context> {
 }
 
 /* Called by pack */
-const fetch_and_encode = <D, E, C>({source, encode, context}: {source: Fetcher<D | E> | D | E, encode?: Encoder<D, E, C>, context: C}): E => {
+const fetch_and_encode = <D, E, C>({source, encode, context}: {source: Fetcher<D | E> | D | E, encode?: Encoder<D, E, C>, context?: C}): E => {
     let decoded;
     if (typeof source === 'function') {
         decoded = source();
@@ -274,33 +276,30 @@ export const Branch = <D, C>(chooser: Chooser<C>, choices: Choices<D, C>, defaul
     return {parse, pack};
 };
 
-export interface Embed_Packer<I, D, C> {
-    (source: D | Fetcher<D>, options?: Pack_Options<C>): Packed;
-    (source: Fetcher<I>, options?: Pack_Options<D>, fetcher: Fetcher<I>): Packed;
-    <P>(source_data: Contextualized<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Array<I>, I>): Packed;
-    <P>(source_data: Contextualized<S | D, P>, options?: Pack_Options, fetch?: Fetcher<Contextualized<S, P>, D>): Packed;
-}
-export interface Embed_Parser<Source, Decoded> {
-    (data_view: DataView, options?: Parse_Options<Source>, deliver?: Deliver<Decoded>): Parsed<Decoded>;
-}
-export const Embed = <C, ED, EC>(embedded: Struct<Contextualized<EC, C>, C> | Struct<ED, EC>): Struct<ED, EC> => {
-    const pack = (source: Fetcher<ED>, options: Pack_Options<EC>): Packed => {
-        if (embedded instanceof Array) {
-            return (embedded as Binary_Array<ED, Contextualized<EC, C>, C>).pack(options.context!, options.context[Symbol.Context], source);
-        } else if (embedded instanceof Map) {
-            return (embedded as Binary_Map<ED, Contextualized<EC, C>, C>).pack(options.context!, options.context[Symbol.Context], source);
-        } else {
-            return (embedded as Struct<ED, EC>).pack(source, options);
+export const Embed = <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<Context_Iterable<D, S>, S> | Struct<D, C>): Struct<Context_Iterable<D, S> | D, C> => {
+    const pack = (source: Fetcher<D>, options: Pack_Options<C> = {}): Packed => {
+        if (options.context !== undefined) {
+            const {context} = options;
+            (options as Pack_Options<S>).context = context[Symbol.Context];
+            if (embedded instanceof Array) {
+                return (embedded as Binary_Array<D, Context_Array<D, S>, S>).pack(context as Context_Array<D, S>, options as Pack_Options<S>, source);
+            } else if (embedded instanceof Map) {
+                return (embedded as Binary_Map<D, Context_Map<D, S>, S>).pack(context as Context_Map<D, S>, options as Pack_Options<S>, context as Context_Map<D, S>);
+            }
         }
+        return (embedded as Struct<D, C>).pack(source, options);
     };
-    const parse = (data_view: DataView, options: Parse_Options<S> | Parse_Options<Context_Type<Array<I> | Mapped<I>, S>> = {}, deliver?: Deliver<D>): Parsed<D> => {
-        if (embedded instanceof Array) {
-            return (embedded as Binary_Array<S, D, I>).parse(data_view, options as Parse_Options<S>, undefined, options.context as Context_Array<I, S>);
-        } else if (embedded instanceof Map) {
-            return (embedded as Binary_Map<S, D, I>).parse(data_view, options as Parse_Options<S>, undefined, options.context as Context_Map<I, S>);
-        } else {
-            return embedded.parse(data_view, options as Parse_Options<S>, deliver);
+    const parse = (data_view: DataView, options: Parse_Options<C> = {}, deliver?: Deliver<D>): Parsed<Context_Iterable<D, S> | D> => {
+        if (options.context !== undefined) {
+            const {context} = options;
+            (options as Pack_Options<S>).context = context[Symbol.Context];
+            if (embedded instanceof Array) {
+                return (embedded as Binary_Array<D, Context_Array<D, S>, S>).parse(data_view, options as Parse_Options<S>, undefined, context as Context_Array<D, S>);
+            } else if (embedded instanceof Map) {
+                return (embedded as Binary_Map<D, Context_Map<D, S>, S>).parse(data_view, options as Parse_Options<S>, undefined, context as Context_Map<D, S>);
+            }
         }
+        return (embedded as Struct<D, C>).parse(data_view, options, deliver);
     };
     return {pack, parse}
 };
@@ -310,7 +309,7 @@ export type Map_Iterable<I> = Array<[string, Map_Item<I>]>;
 export type Map_Transcoders<I, D, C> = Transcoders<Mapped<I>, D, C>;
 
 export interface Binary_Map<I, D, C> extends Mapped<Map_Item<I>>, Struct<D, C> {
-    pack: (source: D | Fetcher<D>, options?: Pack_Options<C>, fetcher?: Fetcher<I>) => Packed;
+    pack: (source: D | Fetcher<D>, options?: Pack_Options<C>, encoded?: Context_Map<I, C>) => Packed;
     parse: (data_view: DataView, options?: Parse_Options<C>, deliver?: Deliver<D>, results?: Context_Map<I, C>) => Parsed<D>;
 }
 
@@ -320,23 +319,23 @@ export const Binary_Map = <I, D, C>(transcoders: Map_Transcoders<I, D, C> | Map_
     }
     const {encode, decode, little_endian: LE} = transcoders;
 
-    const map = new Map() as Binary_Map<I, D, C>;
+    const map = new Map((iterable || []) as Map_Iterable<I>) as Binary_Map<I, D, C>;
 
-    map.pack = (source, options = {}, fetcher) => {
-        let {data_view, byte_offset = 0, little_endian = LE, context} = options;
-        const encoded = fetch_and_encode({source, encode, context});
+    map.pack = (source, options = {}, encoded) => {
         const packed: Packed[] = [];
-        if (fetcher === undefined) {
+        let {data_view, byte_offset = 0, little_endian = LE, context} = options;
+        if (encoded === undefined) {
+            encoded = fetch_and_encode({source, encode, context});
             set_context(encoded, context);
-            // Can I repurpose source in Embed?
-            fetcher = (key: string) => () => {
-                const value = encoded.get(key);
-                if (value === undefined) {
-                    throw new Error(`Insufficient data for serialization: ${key} not in ${encoded}`)
-                }
-                return value;
-            };
         }
+        /* Need to return a function to the `pack` chain to enable Embed with value checking. */
+        const fetcher = (key: string) => () => {
+            const value = encoded!.get(key);
+            if (value === undefined) {
+                throw new Error(`Insufficient data for serialization: ${key} not in ${encoded}`)
+            }
+            return value;
+        };
         let offset = 0;
         for (const [key, item] of map) {
             const {size, buffer} = item.pack(fetcher(key), {data_view, byte_offset: data_view === undefined ? 0 : byte_offset + offset, little_endian, context: encoded});
@@ -466,7 +465,7 @@ export const Binary_Array = <I, D, C>(...elements: Array<Array_Transcoders<I, D,
         const {byte_offset = 0, little_endian = LE, context} = options;
         let remove_parent_symbol = false;
         if (results === undefined) {
-            results = set_context(new Array(), context);
+            results = set_context(new Array() as Array<I>, context);
             remove_parent_symbol = true;
         }
         const size = array.__parse_loop(data_view, {byte_offset, little_endian, context: results}, (data: I) => results!.push(data));
