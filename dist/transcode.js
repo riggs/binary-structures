@@ -1,16 +1,16 @@
 import { Bits_Sizes, Uint_Sizes, Int_Sizes, Float_Sizes, uint_pack, int_pack, float_pack, uint_parse, int_parse, float_parse, utf8_pack, utf8_parse } from './serialization';
 /* Need to hang Context off the global Symbol because of Typescript deficiency */
-Symbol.Context = Symbol.for("Context");
-export const Context = Symbol.for("Context");
+Symbol.Parent = Symbol.for("Parent");
+export const Parent = Symbol.for("Parent");
 const set_context = (data, context) => {
     if (context !== undefined) {
-        data[Symbol.Context] = context;
+        data[Symbol.Parent] = context;
     }
     return data;
 };
 const remove_context = (data, delete_flag) => {
     if (delete_flag) {
-        delete data[Symbol.Context];
+        delete data[Symbol.Parent];
     }
     return data;
 };
@@ -164,7 +164,7 @@ export const Embed = (embedded) => {
     const pack = (source, options = {}) => {
         if (options.context !== undefined) {
             const { context } = options;
-            options.context = context[Symbol.Context];
+            options.context = context[Symbol.Parent];
             if (embedded instanceof Array) {
                 return embedded.pack(context, options, source);
             }
@@ -177,7 +177,7 @@ export const Embed = (embedded) => {
     const parse = (data_view, options = {}, deliver) => {
         if (options.context !== undefined) {
             const { context } = options;
-            options.context = context[Symbol.Context];
+            options.context = context[Symbol.Parent];
             if (embedded instanceof Array) {
                 return embedded.parse(data_view, options, undefined, context);
             }

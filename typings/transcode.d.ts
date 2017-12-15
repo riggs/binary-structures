@@ -1,8 +1,8 @@
 import { Size } from './serialization';
 export declare type Primitive = number | string | ArrayBuffer;
-export declare const Context: symbol;
+export declare const Parent: symbol;
 export interface Context<C> {
-    [Symbol.Context]?: C;
+    [Symbol.Parent]?: C;
 }
 export declare type Contextualized<E extends Context<C>, C> = E;
 export declare type Mapped<T> = Map<string, T>;
