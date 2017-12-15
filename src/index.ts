@@ -5,6 +5,7 @@ export {
     Encoder,
     Decoder,
     inspect,
+    Parent,
     Bits,
     Uint,
     Int,
@@ -16,7 +17,7 @@ export {
     Byte_Buffer,
     Repeat,
     Branch,
-    Padding
+    Padding,
 } from './transcode';
 
 import {Uint, Int, Float, Padding, Struct} from './transcode';
