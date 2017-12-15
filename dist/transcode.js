@@ -1,16 +1,14 @@
 import { Bits_Sizes, Uint_Sizes, Int_Sizes, Float_Sizes, uint_pack, int_pack, float_pack, uint_parse, int_parse, float_parse, utf8_pack, utf8_parse } from './serialization';
-/* Need to hang Context off the global Symbol because of Typescript deficiency */
-Symbol.Parent = Symbol.for("Parent");
-export const Parent = Symbol.for("Parent");
+export const Parent = '$parent';
 const set_context = (data, context) => {
     if (context !== undefined) {
-        data[Symbol.Parent] = context;
+        data[Parent] = context;
     }
     return data;
 };
 const remove_context = (data, delete_flag) => {
     if (delete_flag) {
-        delete data[Symbol.Parent];
+        delete data[Parent];
     }
     return data;
 };
@@ -164,7 +162,7 @@ export const Embed = (embedded) => {
     const pack = (source, options = {}) => {
         if (options.context !== undefined) {
             const { context } = options;
-            options.context = context[Symbol.Parent];
+            options.context = context[Parent];
             if (embedded instanceof Array) {
                 return embedded.pack(context, options, source);
             }
@@ -177,7 +175,7 @@ export const Embed = (embedded) => {
     const parse = (data_view, options = {}, deliver) => {
         if (options.context !== undefined) {
             const { context } = options;
-            options.context = context[Symbol.Parent];
+            options.context = context[Parent];
             if (embedded instanceof Array) {
                 return embedded.parse(data_view, options, undefined, context);
             }
@@ -298,7 +296,7 @@ export const Binary_Array = (...elements) => {
                 packed.push(result);
             }
         };
-        const size = array.__pack_loop(fetcher, { data_view, byte_offset, little_endian, context: encoded }, store);
+        const size = array.__pack_loop(fetcher, { data_view, byte_offset, little_endian, context: encoded }, store, context);
         if (data_view === undefined) {
             data_view = concat_buffers(packed, size);
         }
@@ -320,7 +318,7 @@ export const Binary_Array = (...elements) => {
             results = set_context(new Array(), context);
             remove_parent_symbol = true;
         }
-        const size = array.__parse_loop(data_view, { byte_offset, little_endian, context: results }, (data) => results.push(data));
+        const size = array.__parse_loop(data_view, { byte_offset, little_endian, context: results }, (data) => results.push(data), context);
         const data = decode_and_deliver({ encoded: remove_context(results, remove_parent_symbol), context, decode, deliver });
         return { data, size };
     };
@@ -339,16 +337,16 @@ export const Repeat = (...elements) => {
     const array = Binary_Array({ encode, decode, little_endian }, ...elements);
     const pack_loop = array.__pack_loop;
     const parse_loop = array.__parse_loop;
-    array.__pack_loop = (fetcher, { data_view, byte_offset = 0, little_endian, context }, store) => {
+    array.__pack_loop = (fetcher, { data_view, byte_offset = 0, little_endian, context }, store, parent) => {
         let offset = 0;
         if (count !== undefined) {
-            const repeat = numeric(count, context);
+            const repeat = numeric(count, parent);
             for (let i = 0; i < repeat; i++) {
                 offset += pack_loop(fetcher, { data_view, byte_offset: byte_offset + offset, little_endian, context }, store);
             }
         }
         else if (bytes !== undefined) {
-            const repeat = numeric(bytes, context);
+            const repeat = numeric(bytes, parent);
             while (offset < repeat) {
                 offset += pack_loop(fetcher, { data_view, byte_offset: byte_offset + offset, little_endian, context }, store);
             }
@@ -361,16 +359,16 @@ export const Repeat = (...elements) => {
         }
         return offset;
     };
-    array.__parse_loop = (data_view, { byte_offset = 0, little_endian, context }, deliver) => {
+    array.__parse_loop = (data_view, { byte_offset = 0, little_endian, context }, deliver, parent) => {
         let offset = 0;
         if (count !== undefined) {
-            const repeat = numeric(count, context);
+            const repeat = numeric(count, parent);
             for (let i = 0; i < repeat; i++) {
                 offset += parse_loop(data_view, { byte_offset: byte_offset + offset, little_endian, context }, deliver);
             }
         }
         else if (bytes !== undefined) {
-            const repeat = numeric(bytes, context);
+            const repeat = numeric(bytes, parent);
             while (offset < repeat) {
                 offset += parse_loop(data_view, { byte_offset: byte_offset + offset, little_endian, context }, deliver);
             }

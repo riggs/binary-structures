@@ -1,8 +1,9 @@
 import { Size } from './serialization';
 export declare type Primitive = number | string | ArrayBuffer;
-export declare const Parent: symbol;
+export declare type Parent<C> = keyof Context<C>;
+export declare const Parent = "$parent";
 export interface Context<C> {
-    [Symbol.Parent]?: C;
+    Parent?: C;
 }
 export declare type Contextualized<E extends Context<C>, C> = E;
 export declare type Mapped<T> = Map<string, T>;
@@ -104,13 +105,13 @@ export declare type Array_Item<I> = Struct<I, Array<I>>;
 export declare type Array_Transcoders<I, D, C> = Transcoders<Array<I>, D, C>;
 export interface Binary_Array<I, D, C> extends Array<Array_Item<I>>, Struct<D, C> {
     pack: (source: D | Fetcher<D>, options?: Pack_Options<C>, fetcher?: Fetcher<I>) => Packed;
-    __pack_loop: (fetcher: Fetcher<I>, options: Pack_Options<Array<I>>, store: (result: Packed) => void) => number;
+    __pack_loop: (fetcher: Fetcher<I>, options: Pack_Options<Array<I>>, store: (result: Packed) => void, parent?: C) => number;
     parse: (data_view: DataView, options?: Parse_Options<C>, deliver?: Deliver<D>, results?: Context_Array<I, C>) => Parsed<D>;
-    __parse_loop: (data_view: DataView, options: Parse_Options<Context_Array<I, C>>, deliver: Deliver<I>) => number;
+    __parse_loop: (data_view: DataView, options: Parse_Options<Context_Array<I, C>>, deliver: Deliver<I>, parent?: C) => number;
 }
 export declare const Binary_Array: <I, D, C>(...elements: (Transcoders<I[], D, C> | Struct<I, I[]>)[]) => Binary_Array<I, D, C>;
 export interface Repeat_Options<I, D, C> extends Array_Transcoders<I, D, C> {
-    count?: Numeric<Context_Array<I, C>>;
-    bytes?: Numeric<Context_Array<I, C>>;
+    count?: Numeric<C>;
+    bytes?: Numeric<C>;
 }
 export declare const Repeat: <I, D, C>(...elements: (Repeat_Options<I, D, C> | Struct<I, I[]>)[]) => Binary_Array<I, D, C>;

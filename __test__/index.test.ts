@@ -28,3 +28,10 @@ import {
 } from '../src/index';
 
 // TODO
+describe("type aliases", () => {
+    describe("Uint8", () => {
+        test("parse", () => {
+            expect(Uint8.parse(new DataView(new Uint8Array([42]).buffer))).toEqual({size: 1, data: 42})
+        });
+    });
+});

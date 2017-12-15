@@ -19,26 +19,28 @@ import {
 
 export type Primitive = number | string | ArrayBuffer;
 
-/* Need to hang Context off the global Symbol because of Typescript deficiency */
-Symbol.Parent = Symbol.for("Parent");
-export const Parent = Symbol.for("Parent");
+/* Someday, when Typescript can properly handle Symbol indices on objects, I'll return to this. */
+// export const Parent = Symbol("Parent");
+export type Parent<C> = keyof Context<C>;
+export const Parent = '$parent';
 
 export interface Context<C> {
-    [Symbol.Parent]?: C;
+    // [Parent]?: C;
+    Parent?: C;
 }
 
 export type Contextualized<E extends Context<C>, C> = E;
 
 const set_context = <T, C>(data: T, context?: C): Contextualized<T, C> => {
     if (context !== undefined) {
-        (data as Context<C>)[Symbol.Parent] = context;
+        (data as Context_Type<T, C>)[Parent as Parent<C>] = context;
     }
     return data;
 };
 
 const remove_context = <T, C>(data: Contextualized<T, C>, delete_flag: boolean): T => {
     if (delete_flag) {
-        delete (data as Context<C>)[Symbol.Parent];
+        delete (data as Context<C>)[Parent as Parent<C>];
     }
     return data;
 };
@@ -280,7 +282,7 @@ export const Embed = <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<C
     const pack = (source: Fetcher<D>, options: Pack_Options<C> = {}): Packed => {
         if (options.context !== undefined) {
             const {context} = options;
-            (options as Pack_Options<S>).context = context[Symbol.Parent];
+            (options as Pack_Options<S>).context = context[Parent as Parent<C>];
             if (embedded instanceof Array) {
                 return (embedded as Binary_Array<D, Context_Array<D, S>, S>).pack(context as Context_Array<D, S>, options as Pack_Options<S>, source);
             } else if (embedded instanceof Map) {
@@ -292,7 +294,7 @@ export const Embed = <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<C
     const parse = (data_view: DataView, options: Parse_Options<C> = {}, deliver?: Deliver<D>): Parsed<Context_Iterable<D, S> | D> => {
         if (options.context !== undefined) {
             const {context} = options;
-            (options as Pack_Options<S>).context = context[Symbol.Parent];
+            (options as Pack_Options<S>).context = context[Parent as Parent<C>];
             if (embedded instanceof Array) {
                 return (embedded as Binary_Array<D, Context_Array<D, S>, S>).parse(data_view, options as Parse_Options<S>, undefined, context as Context_Array<D, S>);
             } else if (embedded instanceof Map) {
@@ -414,9 +416,9 @@ export type Array_Transcoders<I, D, C> = Transcoders<Array<I>, D, C>;
 
 export interface Binary_Array<I, D, C> extends Array<Array_Item<I>>, Struct<D, C> {
     pack: (source: D | Fetcher<D>, options?: Pack_Options<C>, fetcher?: Fetcher<I>) => Packed;
-    __pack_loop: (fetcher: Fetcher<I>, options: Pack_Options<Array<I>>, store: (result: Packed) => void) => number;
+    __pack_loop: (fetcher: Fetcher<I>, options: Pack_Options<Array<I>>, store: (result: Packed) => void, parent?: C) => number;
     parse: (data_view: DataView, options?: Parse_Options<C>, deliver?: Deliver<D>, results?: Context_Array<I, C>) => Parsed<D>;
-    __parse_loop: (data_view: DataView, options: Parse_Options<Context_Array<I, C>>, deliver: Deliver<I>) => number;
+    __parse_loop: (data_view: DataView, options: Parse_Options<Context_Array<I, C>>, deliver: Deliver<I>, parent?: C) => number;
 }
 
 export const Binary_Array = <I, D, C>(...elements: Array<Array_Transcoders<I, D, C> | Array_Item<I>>): Binary_Array<I, D, C> => {
@@ -444,7 +446,7 @@ export const Binary_Array = <I, D, C>(...elements: Array<Array_Transcoders<I, D,
                 packed.push(result);
             }
         };
-        const size = array.__pack_loop(fetcher, {data_view, byte_offset, little_endian, context: encoded}, store);
+        const size = array.__pack_loop(fetcher, {data_view, byte_offset, little_endian, context: encoded}, store, context);
         if (data_view === undefined) {
             data_view = concat_buffers(packed, size);
         }
@@ -468,7 +470,7 @@ export const Binary_Array = <I, D, C>(...elements: Array<Array_Transcoders<I, D,
             results = set_context(new Array() as Array<I>, context);
             remove_parent_symbol = true;
         }
-        const size = array.__parse_loop(data_view, {byte_offset, little_endian, context: results}, (data: I) => results!.push(data));
+        const size = array.__parse_loop(data_view, {byte_offset, little_endian, context: results}, (data: I) => results!.push(data), context);
         const data = decode_and_deliver({encoded: remove_context(results, remove_parent_symbol), context, decode, deliver});
         return {data, size};
     };
@@ -486,8 +488,8 @@ export const Binary_Array = <I, D, C>(...elements: Array<Array_Transcoders<I, D,
 };
 
 export interface Repeat_Options<I, D, C> extends Array_Transcoders<I, D, C> {
-    count?: Numeric<Context_Array<I, C>>;
-    bytes?: Numeric<Context_Array<I, C>>;
+    count?: Numeric<C>;
+    bytes?: Numeric<C>;
 }
 
 export const Repeat = <I, D, C>(...elements: Array<Repeat_Options<I, D, C> | Array_Item<I>>): Binary_Array<I, D, C> => {
@@ -498,15 +500,15 @@ export const Repeat = <I, D, C>(...elements: Array<Repeat_Options<I, D, C> | Arr
     const pack_loop = array.__pack_loop;
     const parse_loop = array.__parse_loop;
 
-    array.__pack_loop = (fetcher, {data_view, byte_offset = 0, little_endian, context}, store) => {
+    array.__pack_loop = (fetcher, {data_view, byte_offset = 0, little_endian, context}, store, parent) => {
         let offset = 0;
         if (count !== undefined) {
-            const repeat = numeric(count, context);
+            const repeat = numeric(count, parent);
             for (let i = 0; i < repeat; i++) {
                 offset += pack_loop(fetcher, {data_view, byte_offset: byte_offset + offset, little_endian, context}, store);
             }
         } else if (bytes !== undefined) {
-            const repeat = numeric(bytes, context);
+            const repeat = numeric(bytes, parent);
             while (offset < repeat) {
                 offset += pack_loop(fetcher, {data_view, byte_offset: byte_offset + offset, little_endian, context}, store);
             }
@@ -519,15 +521,15 @@ export const Repeat = <I, D, C>(...elements: Array<Repeat_Options<I, D, C> | Arr
         return offset;
     };
 
-    array.__parse_loop = (data_view, {byte_offset = 0, little_endian, context}, deliver) => {
+    array.__parse_loop = (data_view, {byte_offset = 0, little_endian, context}, deliver, parent) => {
         let offset = 0;
         if (count !== undefined) {
-            const repeat = numeric(count, context);
+            const repeat = numeric(count, parent);
             for (let i = 0; i < repeat; i++) {
                 offset += parse_loop(data_view, {byte_offset: byte_offset + offset, little_endian, context}, deliver);
             }
         } else if (bytes !== undefined) {
-            const repeat = numeric(bytes, context);
+            const repeat = numeric(bytes, parent);
             while (offset < repeat) {
                 offset += parse_loop(data_view, {byte_offset: byte_offset + offset, little_endian, context}, deliver);
             }
