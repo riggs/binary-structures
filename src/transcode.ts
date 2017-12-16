@@ -21,26 +21,26 @@ export type Primitive = number | string | ArrayBuffer;
 
 /* Someday, when Typescript can properly handle Symbol indices on objects, I'll return to this. */
 // export const Parent = Symbol("Parent");
-export type Parent<C> = keyof Context<C>;
-export const Parent = '$parent';
 
 export interface Context<C> {
     // [Parent]?: C;
-    Parent?: C;
+    $parent?: C;
 }
+export type Parent = '$parent'
+export const Parent: Parent = '$parent';
 
 export type Contextualized<E extends Context<C>, C> = E;
 
 const set_context = <T, C>(data: T, context?: C): Contextualized<T, C> => {
     if (context !== undefined) {
-        (data as Context_Type<T, C>)[Parent as Parent<C>] = context;
+        (data as Context_Type<T, C>)[Parent] = context;
     }
     return data;
 };
 
 const remove_context = <T, C>(data: Contextualized<T, C>, delete_flag: boolean): T => {
     if (delete_flag) {
-        delete (data as Context<C>)[Parent as Parent<C>];
+        delete (data as Context<C>)[Parent];
     }
     return data;
 };
@@ -282,7 +282,7 @@ export const Embed = <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<C
     const pack = (source: Fetcher<D>, options: Pack_Options<C> = {}): Packed => {
         if (options.context !== undefined) {
             const {context} = options;
-            (options as Pack_Options<S>).context = context[Parent as Parent<C>];
+            (options as Pack_Options<S>).context = context[Parent];
             if (embedded instanceof Array) {
                 return (embedded as Binary_Array<D, Context_Array<D, S>, S>).pack(context as Context_Array<D, S>, options as Pack_Options<S>, source);
             } else if (embedded instanceof Map) {
@@ -294,7 +294,7 @@ export const Embed = <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<C
     const parse = (data_view: DataView, options: Parse_Options<C> = {}, deliver?: Deliver<D>): Parsed<Context_Iterable<D, S> | D> => {
         if (options.context !== undefined) {
             const {context} = options;
-            (options as Pack_Options<S>).context = context[Parent as Parent<C>];
+            (options as Pack_Options<S>).context = context[Parent];
             if (embedded instanceof Array) {
                 return (embedded as Binary_Array<D, Context_Array<D, S>, S>).parse(data_view, options as Parse_Options<S>, undefined, context as Context_Array<D, S>);
             } else if (embedded instanceof Map) {

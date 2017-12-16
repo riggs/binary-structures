@@ -1,10 +1,10 @@
 import { Size } from './serialization';
 export declare type Primitive = number | string | ArrayBuffer;
-export declare type Parent<C> = keyof Context<C>;
-export declare const Parent = "$parent";
 export interface Context<C> {
-    Parent?: C;
+    $parent?: C;
 }
+export declare type Parent = '$parent';
+export declare const Parent: Parent;
 export declare type Contextualized<E extends Context<C>, C> = E;
 export declare type Mapped<T> = Map<string, T>;
 export declare type Context_Type<E, P> = Contextualized<E & Context<P>, P>;
