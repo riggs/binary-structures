@@ -1,6 +1,6 @@
 export { hex, hex_buffer } from './serialization';
 export { Context_Array, Context_Map, Encoder, Decoder, inspect, Parent, Bits, Uint, Int, Float, Utf8, Embed, Binary_Array, Binary_Map, Byte_Buffer, Repeat, Branch, Padding, Primitive } from './transcode';
-import { Struct } from './transcode';
+import { Struct, Primitive, Mapped } from './transcode';
 export declare const Uint8: Struct<number, any>;
 export declare const Uint16: Struct<number, any>;
 export declare const Uint16LE: Struct<number, any>;
@@ -29,3 +29,8 @@ export declare const Float64BE: Struct<number, any>;
  * @type {Struct}
  */
 export declare const Pass: Struct<any, {}>;
+export interface Encoded_Map extends Mapped<Encoded> {
+}
+export interface Encoded_Array extends Array<Encoded> {
+}
+export declare type Encoded = Primitive | Encoded_Map | Encoded_Array;
