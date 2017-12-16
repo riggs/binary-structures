@@ -18,6 +18,7 @@ export {
     Repeat,
     Branch,
     Padding,
+    Primitive
 } from './transcode';
 
 import {Uint, Int, Float, Padding, Struct} from './transcode';

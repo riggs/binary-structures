@@ -250,6 +250,7 @@ export const Padding = <C>(size: Numeric<C>): Struct<any, C> => {
     return {pack, parse}
 };
 
+/* Allow Symbols once TypesScript adds support */
 export type Chooser<C> = (context?: C) => number | string;
 export interface Choices<D, C> {
     [choice: number]: Struct<D, C>;
