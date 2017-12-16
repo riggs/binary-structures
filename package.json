@@ -1,6 +1,6 @@
 {
   "name": "binary-structures",
-  "version": "0.13.1",
+  "version": "1.0.0",
   "description": "Yet another declarative binary packer/parser, but built for modern browsers.",
   "keywords": [
     "binary",
