@@ -135,7 +135,7 @@ export const Padding = (size) => {
     };
     return { pack, parse };
 };
-export const Branch = (chooser, choices, default_choice) => {
+export const Branch = ({ chooser, choices, default_choice }) => {
     const choose = (source) => {
         let choice = chooser(source);
         if (choices.hasOwnProperty(choice)) {

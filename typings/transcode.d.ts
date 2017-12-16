@@ -91,7 +91,11 @@ export interface Choices<D, C> {
     [choice: number]: Struct<D, C>;
     [choice: string]: Struct<D, C>;
 }
-export declare const Branch: <D, C>(chooser: Chooser<C>, choices: Choices<D, C>, default_choice?: Struct<D, C> | undefined) => Struct<D, C>;
+export declare const Branch: <D, C>({chooser, choices, default_choice}: {
+    chooser: Chooser<C>;
+    choices: Choices<D, C>;
+    default_choice?: Struct<D, C> | undefined;
+}) => Struct<D, C>;
 export declare const Embed: <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<Context_Iterable<D, S>, S> | Struct<D, C>) => Struct<D | (Map<string, D> & Context<S>) | (D[] & Context<S>), C>;
 export declare type Map_Item<I> = Struct<I, Mapped<I>>;
 export declare type Map_Iterable<I> = Array<[string, Map_Item<I>]>;

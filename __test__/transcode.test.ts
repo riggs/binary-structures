@@ -195,19 +195,19 @@ describe("Branch", () => {
     describe("parsing", () => {
         test("simple case", () => {
             const data_view = new DataView(new Uint8Array([1, 0xAB, 0xCD]).buffer);
-            const byte_array = Binary_Array(Uint(8), Branch((context: Array<number>) => context[0], {1: Uint(16, {little_endian: true}), 2: Uint(16)}));
+            const byte_array = Binary_Array(Uint(8), Branch({chooser: (context: Array<number>) => context[0], choices: {1: Uint(16, {little_endian: true}), 2: Uint(16)}}));
             expect(byte_array.parse(data_view)).toEqual({data: [1, 0xCDAB], size: 3});
             data_view.setUint8(0, 2);
             expect(byte_array.parse(data_view)).toEqual({data: [2, 0xABCD], size: 3});
         });
         test("default value", () => {
             const data_view = new DataView(new Uint8Array([42, 0xAB, 0xCD]).buffer);
-            const byte_array = Binary_Array(Uint(8), Branch((context: Array<number>) => context[0], {1: Uint(16, {little_endian: true})}, Uint(16)));
+            const byte_array = Binary_Array(Uint(8), Branch({chooser: (context: Array<number>) => context[0], choices: {1: Uint(16, {little_endian: true})}, default_choice: Uint(16)}));
             expect(byte_array.parse(data_view)).toEqual({data: [42, 0xABCD], size: 3});
         });
         test("bad choice", () => {
             const data_view = new DataView(new Uint8Array([42, 0xAB, 0xCD]).buffer);
-            const byte_array = Binary_Array(Uint(8), Branch((context: Array<number>) => context[0], {1: Uint(16, {little_endian: true}), 2: Uint(16)}));
+            const byte_array = Binary_Array(Uint(8), Branch({chooser: (context: Array<number>) => context[0], choices: {1: Uint(16, {little_endian: true}), 2: Uint(16)}}));
             expect(() => byte_array.parse(data_view)).toThrow(/Choice 42 not in/);
         });
     });

@@ -256,7 +256,7 @@ export interface Choices<D, C> {
     [choice: string]: Struct<D, C>;
 }
 
-export const Branch = <D, C>(chooser: Chooser<C>, choices: Choices<D, C>, default_choice?: Struct<D, C>): Struct<D, C> => {
+export const Branch = <D, C>({chooser, choices, default_choice}: {chooser: Chooser<C>, choices: Choices<D, C>, default_choice?: Struct<D, C>}): Struct<D, C> => {
     const choose = (source?: C): Struct<D, C> => {
         let choice = chooser(source);
         if (choices.hasOwnProperty(choice)) {
