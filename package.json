@@ -23,7 +23,7 @@
   "dependencies": {},
   "devDependencies": {
     "@types/jest": "^21.1.8",
-    "improved-map": "^1.0.5",
+    "improved-map": "^1.0.7",
     "jest": "^21.2.1",
     "text-encoding": "^0.6.4",
     "ts-jest": "^21.2.4",
