@@ -1,21 +1,23 @@
 import { Size } from './serialization';
 export declare type Primitive = number | string | ArrayBuffer;
-export interface Context<C> {
-    $parent?: C;
+export declare type Mapped<T> = Map<string, T>;
+export declare type Encoded_Map = Mapped<any>;
+export declare type Encoded_Array = Array<any>;
+export declare type Encoded = Primitive | Encoded_Map | Encoded_Array;
+export interface Context<P> {
+    $parent?: P;
 }
 export declare type Parent = '$parent';
 export declare const Parent: Parent;
-export declare type Contextualized<E extends Context<C>, C> = E;
-export declare type Mapped<T> = Map<string, T>;
-export declare type Context_Type<E, P> = Contextualized<E & Context<P>, P>;
+export declare type Context_Type<E extends Encoded, C> = E & Context<C>;
 export declare type Context_Map<Encoded, Context> = Context_Type<Mapped<Encoded>, Context>;
 export declare type Context_Array<Encoded, Context> = Context_Type<Array<Encoded>, Context>;
 export declare type Context_Iterable<Encoded, Context> = Context_Map<Encoded, Context> | Context_Array<Encoded, Context>;
-export declare type Encoder<Decoded, Encoded, Context> = (decoded: Decoded, context?: Context) => Encoded;
-export declare type Decoder<Encoded, Decoded, Context> = (encoded: Encoded, context?: Context) => Decoded;
-export interface Transcoders<Encoded, Decoded, Context> {
-    encode?: Encoder<Decoded, Encoded, Context>;
-    decode?: Decoder<Encoded, Decoded, Context>;
+export declare type Encoder<Decoded, E extends Encoded, Context> = (decoded: Decoded, context?: Context) => E;
+export declare type Decoder<E extends Encoded, Decoded, Context> = (encoded: E, context?: Context) => Decoded;
+export interface Transcoders<E extends Encoded, Decoded, Context> {
+    encode?: Encoder<Decoded, E, Context>;
+    decode?: Decoder<E, Decoded, Context>;
     little_endian?: boolean;
 }
 export declare const inspect_transcoder: <T>(data: T, context?: any) => T;
@@ -96,7 +98,7 @@ export declare const Branch: <D, C>({chooser, choices, default_choice}: {
     choices: Choices<D, C>;
     default_choice?: Struct<D, C> | undefined;
 }) => Struct<D, C>;
-export declare const Embed: <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<Context_Iterable<D, S>, S> | Struct<D, C>) => Struct<D | (Map<string, D> & Context<S>) | (D[] & Context<S>), C>;
+export declare const Embed: <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<Context_Iterable<D, S>, S> | Struct<D, C>) => Struct<D | Context_Type<Map<string, D>, S> | Context_Type<D[], S>, C>;
 export declare type Map_Item<I> = Struct<I, Mapped<I>>;
 export declare type Map_Iterable<I> = Array<[string, Map_Item<I>]>;
 export declare type Map_Transcoders<I, D, C> = Transcoders<Mapped<I>, D, C>;

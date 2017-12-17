@@ -19,35 +19,38 @@ import {
 
 export type Primitive = number | string | ArrayBuffer;
 
+export type Mapped<T> = Map<string, T>;
+
+export type Encoded_Map = Mapped<any>;
+export type Encoded_Array = Array<any>;
+export type Encoded = Primitive | Encoded_Map | Encoded_Array;
+
 /* Someday, when Typescript can properly handle Symbol indices on objects, I'll return to this. */
 // export const Parent = Symbol("Parent");
 
-export interface Context<C> {
-    // [Parent]?: C;
-    $parent?: C;
+export interface Context<P> {
+    // [Parent]?: P;
+    $parent?: P;
 }
 export type Parent = '$parent'
 export const Parent: Parent = '$parent';
 
-export type Contextualized<E extends Context<C>, C> = E;
-
-const set_context = <T, C>(data: T, context?: C): Contextualized<T, C> => {
+const set_context = <E extends Encoded_Map | Encoded_Array, C>(data: E, context?: C): Context_Type<E, C> => {
     if (context !== undefined) {
-        (data as Context_Type<T, C>)[Parent] = context;
+        (data as Context_Type<E, C>)[Parent] = context;
     }
-    return data;
+    return data as Context_Type<E, C>;
 };
 
-const remove_context = <T, C>(data: Contextualized<T, C>, delete_flag: boolean): T => {
+const remove_context = <T extends Encoded_Map | Encoded_Array, C>(data: T, delete_flag: boolean): T => {
     if (delete_flag) {
-        delete (data as Context<C>)[Parent];
+        delete (data as Context_Type<T, C>)[Parent];
     }
     return data;
 };
 
-export type Mapped<T> = Map<string, T>;
-
-export type Context_Type<E, P> = Contextualized<E & Context<P>, P>;
+/* Context needs to be imposed at the Struct level to support Repeat & Byte_Buffer */
+export type Context_Type<E extends Encoded, C> = E & Context<C>;
 
 export type Context_Map<Encoded, Context> = Context_Type<Mapped<Encoded>, Context>;
 
@@ -56,12 +59,12 @@ export type Context_Array<Encoded, Context> = Context_Type<Array<Encoded>, Conte
 export type Context_Iterable<Encoded, Context> = Context_Map<Encoded, Context> | Context_Array<Encoded, Context>;
 
 /* These functions provided by library consumer to convert data to usable structures. */
-export type Encoder<Decoded, Encoded, Context> = (decoded: Decoded, context?: Context) => Encoded;
-export type Decoder<Encoded, Decoded, Context> = (encoded: Encoded, context?: Context) => Decoded;
+export type Encoder<Decoded, E extends Encoded, Context> = (decoded: Decoded, context?: Context) => E;
+export type Decoder<E extends Encoded, Decoded, Context> = (encoded: E, context?: Context) => Decoded;
 
-export interface Transcoders<Encoded, Decoded, Context> {
-    encode?: Encoder<Decoded, Encoded, Context>;
-    decode?: Decoder<Encoded, Decoded, Context>;
+export interface Transcoders<E extends Encoded, Decoded, Context> {
+    encode?: Encoder<Decoded, E, Context>;
+    decode?: Decoder<E, Decoded, Context>;
     little_endian?: boolean;
 }
 
@@ -126,7 +129,7 @@ export interface Struct<Decoded, Context> {
 }
 
 /* Called by pack */
-const fetch_and_encode = <D, E, C>({source, encode, context}: {source: Fetcher<D | E> | D | E, encode?: Encoder<D, E, C>, context?: C}): E => {
+const fetch_and_encode = <D, E extends Encoded, C>({source, encode, context}: {source: Fetcher<D | E> | D | E, encode?: Encoder<D, E, C>, context?: C}): E => {
     let decoded;
     if (typeof source === 'function') {
         decoded = source();
@@ -141,7 +144,7 @@ const fetch_and_encode = <D, E, C>({source, encode, context}: {source: Fetcher<D
 };
 
 /* Called by parse */
-const decode_and_deliver = <E, D, C>({encoded, decode, context, deliver}: {encoded: E | D, decode?: Decoder<E, D, C>, context?: C, deliver?: Deliver<D>}): D => {
+const decode_and_deliver = <E extends Encoded, D, C>({encoded, decode, context, deliver}: {encoded: E | D, decode?: Decoder<E, D, C>, context?: C, deliver?: Deliver<D>}): D => {
     let decoded;
     if (typeof decode === 'function') {
         decoded = decode(encoded as E, context);
@@ -154,7 +157,7 @@ const decode_and_deliver = <E, D, C>({encoded, decode, context, deliver}: {encod
     return decoded;
 };
 
-const factory = <E extends Primitive>(serializer: Serializer<E>, deserializer: Deserializer<E>, verify_size: (bits: number) => boolean) => {
+const factory = <E extends number | string>(serializer: Serializer<E>, deserializer: Deserializer<E>, verify_size: (bits: number) => boolean) => {
     return (<D, C>(bits: number, transcoders: Transcoders<E, D, C> = {}): Struct<D, C> => {
         if(!verify_size(bits)) {
             throw new Error(`Invalid size: ${bits}`);
