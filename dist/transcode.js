@@ -20,7 +20,6 @@ export const inspect = {
     encode: inspect_transcoder,
     decode: inspect_transcoder,
 };
-/* Called by pack */
 const fetch_and_encode = ({ source, encode, context }) => {
     let decoded;
     if (typeof source === 'function') {
@@ -36,7 +35,6 @@ const fetch_and_encode = ({ source, encode, context }) => {
         return decoded;
     }
 };
-/* Called by parse */
 const decode_and_deliver = ({ encoded, decode, context, deliver }) => {
     let decoded;
     if (typeof decode === 'function') {

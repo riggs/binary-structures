@@ -12,11 +12,11 @@ export const Int_Sizes = [8, 16, 32];
 export const Float_Sizes = [32, 64];
 const write_bit_shift = (packer, value, { bits, data_view, byte_offset = 0, little_endian }) => {
     /*
-    bit_offset = 5
-    buffer = 00011111
-    byte = xxxxxxxx
+     bit_offset = 5
+     buffer = 00011111
+     byte = xxxxxxxx
 
-    new_buffer = 000xxxxx xxx11111
+     new_buffer = 000xxxxx xxx11111
      */
     const bit_offset = (byte_offset % 1) * 8;
     byte_offset = Math.floor(byte_offset);

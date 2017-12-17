@@ -37,14 +37,12 @@ export interface Fetcher<Decoded> {
 export interface Deliver<Decoded> {
     (data: Decoded): void;
 }
-export interface Common_Options<Context> {
+export interface Parse_Options<Context> {
     byte_offset?: number;
     little_endian?: boolean;
     context?: Context;
 }
-export interface Parse_Options<C> extends Common_Options<C> {
-}
-export interface Pack_Options<C> extends Common_Options<C> {
+export interface Pack_Options<C> extends Parse_Options<C> {
     data_view?: DataView;
 }
 export interface Packed {
@@ -93,11 +91,12 @@ export interface Choices<D, C> {
     [choice: number]: Struct<D, C>;
     [choice: string]: Struct<D, C>;
 }
-export declare const Branch: <D, C>({chooser, choices, default_choice}: {
+export interface Branch<D, C> {
     chooser: Chooser<C>;
     choices: Choices<D, C>;
-    default_choice?: Struct<D, C> | undefined;
-}) => Struct<D, C>;
+    default_choice?: Struct<D, C>;
+}
+export declare const Branch: <D, C>({chooser, choices, default_choice}: Branch<D, C>) => Struct<D, C>;
 export declare const Embed: <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<Context_Iterable<D, S>, S> | Struct<D, C>) => Struct<D | Context_Type<Map<string, D>, S> | Context_Type<D[], S>, C>;
 export declare type Map_Item<I> = Struct<I, Mapped<I>>;
 export declare type Map_Iterable<I> = Array<[string, Map_Item<I>]>;
