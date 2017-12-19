@@ -439,6 +439,21 @@ describe("Embed", () => {
             expect(binary_array.parse(data_view)).toEqual({data: [0, 1], size: 2});
             expect(binary_map.parse(data_view)).toEqual({data: {a: 0, b: 1}, size: 2});
         });
+        test("array embedded in array", () => {
+            const data_view = new DataView(new Uint8Array([0, 1, 2, 3]).buffer);
+            const binary_array = Binary_Array(Uint(8), Embed(Binary_Array(Uint(8), Uint(8))), Uint(8));
+            expect(binary_array.parse(data_view)).toEqual({data: [0, 1, 2, 3], size: 4});
+        });
+        test("repeat embedded in array", () => {
+            const data_view = new DataView(new Uint8Array([0, 1, 2, 3, 4]).buffer);
+            const binary_array = Binary_Array(Uint(8), Embed(Repeat(Uint(8), {count: 3})), Uint(8));
+            expect(binary_array.parse(data_view)).toEqual({data: [0, 1, 2, 3, 4], size: 5});
+        });
+        test("embedded maps", () => {
+            const data_view = new DataView(new Uint8Array([0, 1, 2, 3]).buffer);
+            const binary_map = Binary_Map({decode}).set('a', Uint(8)).set('embedded', Embed(Binary_Map().set('b', Uint(8)).set('c', Uint(8)))).set('d', Uint(8));
+            expect(binary_map.parse(data_view)).toEqual({data: {a: 0, b: 1, c: 2, d: 3}, size: 4});
+        });
         test("embed branch containing Uint(8) in array and map", () => {
             const data_view = new DataView(new Uint8Array([0, 1]).buffer);
             const binary_array = Binary_Array(Uint(8), Branch({
@@ -467,21 +482,6 @@ describe("Embed", () => {
                 choices: {0: Embed(Binary_Map().set('b', Uint(8)))}
             }));
             expect(binary_map.parse(data_view)).toEqual({data: {a: 0, b: 1}, size: 2});
-        });
-        test("array embedded in array", () => {
-            const data_view = new DataView(new Uint8Array([0, 1, 2, 3]).buffer);
-            const binary_array = Binary_Array(Uint(8), Embed(Binary_Array(Uint(8), Uint(8))), Uint(8));
-            expect(binary_array.parse(data_view)).toEqual({data: [0, 1, 2, 3], size: 4});
-        });
-        test("repeat embedded in array", () => {
-            const data_view = new DataView(new Uint8Array([0, 1, 2, 3, 4]).buffer);
-            const binary_array = Binary_Array(Uint(8), Embed(Repeat(Uint(8), {count: 3})), Uint(8));
-            expect(binary_array.parse(data_view)).toEqual({data: [0, 1, 2, 3, 4], size: 5});
-        });
-        test("embedded maps", () => {
-            const data_view = new DataView(new Uint8Array([0, 1, 2, 3]).buffer);
-            const binary_map = Binary_Map({decode}).set('a', Uint(8)).set('embedded', Embed(Binary_Map().set('b', Uint(8)).set('c', Uint(8)))).set('d', Uint(8));
-            expect(binary_map.parse(data_view)).toEqual({data: {a: 0, b: 1, c: 2, d: 3}, size: 4});
         });
     });
     describe("Packing", () => {
