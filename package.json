@@ -15,7 +15,7 @@
     "bit",
     "byte"
   ],
-  "main": "./dist/index.js",
+  "main": "./dist/bundle.js",
   "typings": "./typings/index.d.ts",
   "directories": {
     "test": "__test__"
@@ -25,14 +25,18 @@
     "@types/jest": "^21.1.8",
     "improved-map": "^1.0.7",
     "jest": "^21.2.1",
+    "source-map-loader": "^0.2.3",
     "text-encoding": "^0.6.4",
     "ts-jest": "^21.2.4",
-    "typescript": "^2.6.2"
+    "ts-loader": "^3.2.0",
+    "typescript": "^2.6.2",
+    "webpack": "^3.10.0"
   },
   "scripts": {
     "tsc": "tsc",
     "test": "jest",
-    "coverage": "jest --coverage"
+    "coverage": "jest --coverage",
+    "webpack": "webpack"
   },
   "jest": {
     "automock": false,
