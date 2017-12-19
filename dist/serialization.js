@@ -1,9 +1,9 @@
-export function hex(value) {
+export const hex = (value) => {
     return "0x" + value.toString(16).toUpperCase().padStart(2, "0");
-}
-export function hex_buffer(buffer) {
+};
+export const hex_buffer = (buffer) => {
     return Array.from(new Uint8Array(buffer), hex).join(", ");
-}
+};
 const utf8_encoder = new TextEncoder();
 const utf8_decoder = new TextDecoder();
 export const Bits_Sizes = [1, 2, 3, 4, 5, 6, 7];

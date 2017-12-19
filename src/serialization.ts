@@ -1,10 +1,10 @@
-export function hex(value: number) {
+export const hex = (value: number) => {
     return "0x" + value.toString(16).toUpperCase().padStart(2, "0")
-}
+};
 
-export function hex_buffer(buffer: ArrayBuffer) {
+export const hex_buffer = (buffer: ArrayBuffer) => {
     return Array.from(new Uint8Array(buffer), hex).join(", ")
-}
+};
 
 const utf8_encoder = new TextEncoder();
 const utf8_decoder = new TextDecoder();

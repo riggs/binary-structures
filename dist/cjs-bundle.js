@@ -1,95 +1,19 @@
-/******/ (function(modules) { // webpackBootstrap
-/******/ 	// The module cache
-/******/ 	var installedModules = {};
-/******/
-/******/ 	// The require function
-/******/ 	function __webpack_require__(moduleId) {
-/******/
-/******/ 		// Check if module is in cache
-/******/ 		if(installedModules[moduleId]) {
-/******/ 			return installedModules[moduleId].exports;
-/******/ 		}
-/******/ 		// Create a new module (and put it into the cache)
-/******/ 		var module = installedModules[moduleId] = {
-/******/ 			i: moduleId,
-/******/ 			l: false,
-/******/ 			exports: {}
-/******/ 		};
-/******/
-/******/ 		// Execute the module function
-/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-/******/
-/******/ 		// Flag the module as loaded
-/******/ 		module.l = true;
-/******/
-/******/ 		// Return the exports of the module
-/******/ 		return module.exports;
-/******/ 	}
-/******/
-/******/
-/******/ 	// expose the modules object (__webpack_modules__)
-/******/ 	__webpack_require__.m = modules;
-/******/
-/******/ 	// expose the module cache
-/******/ 	__webpack_require__.c = installedModules;
-/******/
-/******/ 	// define getter function for harmony exports
-/******/ 	__webpack_require__.d = function(exports, name, getter) {
-/******/ 		if(!__webpack_require__.o(exports, name)) {
-/******/ 			Object.defineProperty(exports, name, {
-/******/ 				configurable: false,
-/******/ 				enumerable: true,
-/******/ 				get: getter
-/******/ 			});
-/******/ 		}
-/******/ 	};
-/******/
-/******/ 	// getDefaultExport function for compatibility with non-harmony modules
-/******/ 	__webpack_require__.n = function(module) {
-/******/ 		var getter = module && module.__esModule ?
-/******/ 			function getDefault() { return module['default']; } :
-/******/ 			function getModuleExports() { return module; };
-/******/ 		__webpack_require__.d(getter, 'a', getter);
-/******/ 		return getter;
-/******/ 	};
-/******/
-/******/ 	// Object.prototype.hasOwnProperty.call
-/******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
-/******/
-/******/ 	// __webpack_public_path__
-/******/ 	__webpack_require__.p = "";
-/******/
-/******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 2);
-/******/ })
-/************************************************************************/
-/******/ ([
-/* 0 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
+'use strict';
 
-"use strict";
-/* harmony export (immutable) */ __webpack_exports__["g"] = hex;
-/* harmony export (immutable) */ __webpack_exports__["h"] = hex_buffer;
-function hex(value) {
+Object.defineProperty(exports, '__esModule', { value: true });
+
+const hex = (value) => {
     return "0x" + value.toString(16).toUpperCase().padStart(2, "0");
-}
-function hex_buffer(buffer) {
+};
+const hex_buffer = (buffer) => {
     return Array.from(new Uint8Array(buffer), hex).join(", ");
-}
+};
 const utf8_encoder = new TextEncoder();
 const utf8_decoder = new TextDecoder();
 const Bits_Sizes = [1, 2, 3, 4, 5, 6, 7];
-/* harmony export (immutable) */ __webpack_exports__["a"] = Bits_Sizes;
-
 const Uint_Sizes = Bits_Sizes.concat([8, 16, 32, 64]);
-/* harmony export (immutable) */ __webpack_exports__["d"] = Uint_Sizes;
-
 const Int_Sizes = [8, 16, 32];
-/* harmony export (immutable) */ __webpack_exports__["c"] = Int_Sizes;
-
 const Float_Sizes = [32, 64];
-/* harmony export (immutable) */ __webpack_exports__["b"] = Float_Sizes;
-
 const write_bit_shift = (packer, value, { bits, data_view, byte_offset = 0, little_endian }) => {
     /*
      bit_offset = 5
@@ -178,8 +102,6 @@ const uint_pack = (value, { bits, data_view, byte_offset = 0, little_endian }) =
         return bits;
     }
 };
-/* harmony export (immutable) */ __webpack_exports__["k"] = uint_pack;
-
 const uint_parse = ({ bits, data_view, byte_offset = 0, little_endian }) => {
     if (byte_offset % 1) {
         return read_bit_shift(uint_parse, { bits, data_view, byte_offset, little_endian });
@@ -219,8 +141,6 @@ const uint_parse = ({ bits, data_view, byte_offset = 0, little_endian }) => {
         }
     }
 };
-/* harmony export (immutable) */ __webpack_exports__["l"] = uint_parse;
-
 const int_pack = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
     const original_value = value;
     value = Math.floor(original_value);
@@ -247,8 +167,6 @@ const int_pack = (value, { bits, data_view, byte_offset = 0, little_endian }) =>
         return bits;
     }
 };
-/* harmony export (immutable) */ __webpack_exports__["i"] = int_pack;
-
 const int_parse = ({ bits, data_view, byte_offset = 0, little_endian }) => {
     if (byte_offset % 1) {
         return read_bit_shift(int_parse, { bits, data_view, byte_offset, little_endian });
@@ -266,8 +184,6 @@ const int_parse = ({ bits, data_view, byte_offset = 0, little_endian }) => {
         }
     }
 };
-/* harmony export (immutable) */ __webpack_exports__["j"] = int_parse;
-
 const float_pack = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
     /* TODO: Input validation */
     if (byte_offset % 1) {
@@ -287,8 +203,6 @@ const float_pack = (value, { bits, data_view, byte_offset = 0, little_endian }) 
         return bits;
     }
 };
-/* harmony export (immutable) */ __webpack_exports__["e"] = float_pack;
-
 const float_parse = ({ bits, data_view, byte_offset = 0, little_endian }) => {
     if (byte_offset % 1) {
         return read_bit_shift(float_parse, { bits, data_view, byte_offset, little_endian });
@@ -304,8 +218,6 @@ const float_parse = ({ bits, data_view, byte_offset = 0, little_endian }) => {
         }
     }
 };
-/* harmony export (immutable) */ __webpack_exports__["f"] = float_parse;
-
 const utf8_pack = (value, { bits, data_view, byte_offset = 0 }) => {
     if (byte_offset % 1) {
         return write_bit_shift(utf8_pack, value, { bits, data_view, byte_offset });
@@ -325,8 +237,6 @@ const utf8_pack = (value, { bits, data_view, byte_offset = 0 }) => {
         return byte_length * 8;
     }
 };
-/* harmony export (immutable) */ __webpack_exports__["m"] = utf8_pack;
-
 const utf8_parse = ({ bits, data_view, byte_offset = 0 }) => {
     if (byte_offset % 1) {
         return read_bit_shift(utf8_parse, { bits, data_view, byte_offset });
@@ -335,20 +245,8 @@ const utf8_parse = ({ bits, data_view, byte_offset = 0 }) => {
         return utf8_decoder.decode(new DataView(data_view.buffer, byte_offset, bits ? bits / 8 : undefined));
     }
 };
-/* harmony export (immutable) */ __webpack_exports__["n"] = utf8_parse;
-
-
-
-/***/ }),
-/* 1 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__serialization__ = __webpack_require__(0);
 
 const Parent = '$parent';
-/* harmony export (immutable) */ __webpack_exports__["j"] = Parent;
-
 const set_context = (data, context) => {
     if (context !== undefined) {
         data[Parent] = context;
@@ -365,14 +263,10 @@ const inspect_transcoder = (data, context) => {
     console.log({ data, context });
     return data;
 };
-/* unused harmony export inspect_transcoder */
-
 const inspect = {
     encode: inspect_transcoder,
     decode: inspect_transcoder,
 };
-/* harmony export (immutable) */ __webpack_exports__["n"] = inspect;
-
 const fetch_and_encode = ({ source, encode, context }) => {
     let decoded;
     if (typeof source === 'function') {
@@ -422,21 +316,11 @@ const factory = (serializer, deserializer, verify_size) => {
         return { pack, parse };
     });
 };
-const Bits = factory(__WEBPACK_IMPORTED_MODULE_0__serialization__["k" /* uint_pack */], __WEBPACK_IMPORTED_MODULE_0__serialization__["l" /* uint_parse */], (s) => __WEBPACK_IMPORTED_MODULE_0__serialization__["a" /* Bits_Sizes */].includes(s));
-/* harmony export (immutable) */ __webpack_exports__["c"] = Bits;
-
-const Uint = factory(__WEBPACK_IMPORTED_MODULE_0__serialization__["k" /* uint_pack */], __WEBPACK_IMPORTED_MODULE_0__serialization__["l" /* uint_parse */], (s) => __WEBPACK_IMPORTED_MODULE_0__serialization__["d" /* Uint_Sizes */].includes(s));
-/* harmony export (immutable) */ __webpack_exports__["l"] = Uint;
-
-const Int = factory(__WEBPACK_IMPORTED_MODULE_0__serialization__["i" /* int_pack */], __WEBPACK_IMPORTED_MODULE_0__serialization__["j" /* int_parse */], (s) => __WEBPACK_IMPORTED_MODULE_0__serialization__["c" /* Int_Sizes */].includes(s));
-/* harmony export (immutable) */ __webpack_exports__["h"] = Int;
-
-const Float = factory(__WEBPACK_IMPORTED_MODULE_0__serialization__["e" /* float_pack */], __WEBPACK_IMPORTED_MODULE_0__serialization__["f" /* float_parse */], (s) => __WEBPACK_IMPORTED_MODULE_0__serialization__["b" /* Float_Sizes */].includes(s));
-/* harmony export (immutable) */ __webpack_exports__["g"] = Float;
-
-const Utf8 = factory(__WEBPACK_IMPORTED_MODULE_0__serialization__["m" /* utf8_pack */], __WEBPACK_IMPORTED_MODULE_0__serialization__["n" /* utf8_parse */], (s) => s % 8 === 0 && s >= 0);
-/* harmony export (immutable) */ __webpack_exports__["m"] = Utf8;
-
+const Bits = factory(uint_pack, uint_parse, (s) => Bits_Sizes.includes(s));
+const Uint = factory(uint_pack, uint_parse, (s) => Uint_Sizes.includes(s));
+const Int = factory(int_pack, int_parse, (s) => Int_Sizes.includes(s));
+const Float = factory(float_pack, float_parse, (s) => Float_Sizes.includes(s));
+const Utf8 = factory(utf8_pack, utf8_parse, (s) => s % 8 === 0 && s >= 0);
 const numeric = (n, context) => {
     if (typeof n === 'object') {
         let { bits = 0, bytes = 0 } = n;
@@ -485,8 +369,6 @@ const Byte_Buffer = (length, transcoders = {}) => {
     };
     return { pack, parse };
 };
-/* harmony export (immutable) */ __webpack_exports__["e"] = Byte_Buffer;
-
 const Padding = (size) => {
     const pack = (source, options = {}) => {
         size = numeric(size, options.context);
@@ -498,8 +380,6 @@ const Padding = (size) => {
     };
     return { pack, parse };
 };
-/* harmony export (immutable) */ __webpack_exports__["i"] = Padding;
-
 const Branch = ({ chooser, choices, default_choice }) => {
     const choose = (source) => {
         let choice = chooser(source);
@@ -523,8 +403,6 @@ const Branch = ({ chooser, choices, default_choice }) => {
     };
     return { parse, pack };
 };
-/* harmony export (immutable) */ __webpack_exports__["d"] = Branch;
-
 const Embed = (embedded) => {
     const pack = (source, options = {}) => {
         if (options.context !== undefined) {
@@ -554,8 +432,6 @@ const Embed = (embedded) => {
     };
     return { pack, parse };
 };
-/* harmony export (immutable) */ __webpack_exports__["f"] = Embed;
-
 const Binary_Map = (transcoders = {}, iterable) => {
     if (transcoders instanceof Array) {
         [transcoders, iterable] = [iterable, transcoders];
@@ -608,8 +484,6 @@ const Binary_Map = (transcoders = {}, iterable) => {
     };
     return map;
 };
-/* harmony export (immutable) */ __webpack_exports__["b"] = Binary_Map;
-
 const concat_buffers = (packed, byte_length) => {
     const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
     let byte_offset = 0;
@@ -703,8 +577,6 @@ const Binary_Array = (...elements) => {
     };
     return array;
 };
-/* harmony export (immutable) */ __webpack_exports__["a"] = Binary_Array;
-
 const Repeat = (...elements) => {
     const { count, bytes, encode, decode, little_endian } = extract_array_options(elements);
     const array = Binary_Array({ encode, decode, little_endian }, ...elements);
@@ -756,115 +628,74 @@ const Repeat = (...elements) => {
     };
     return array;
 };
-/* harmony export (immutable) */ __webpack_exports__["k"] = Repeat;
 
-
-
-/***/ }),
-/* 2 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
-
-"use strict";
-Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0__serialization__ = __webpack_require__(0);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "hex", function() { return __WEBPACK_IMPORTED_MODULE_0__serialization__["g"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "hex_buffer", function() { return __WEBPACK_IMPORTED_MODULE_0__serialization__["h"]; });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__transcode__ = __webpack_require__(1);
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "inspect", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["n"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Parent", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["j"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Bits", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["c"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Uint", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["l"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Int", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["h"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Float", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["g"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Utf8", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["m"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Embed", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["f"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Binary_Array", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["a"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Binary_Map", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["b"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Byte_Buffer", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["e"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Repeat", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["k"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Branch", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["d"]; });
-/* harmony reexport (binding) */ __webpack_require__.d(__webpack_exports__, "Padding", function() { return __WEBPACK_IMPORTED_MODULE_1__transcode__["i"]; });
-
-
-
-const Uint8 = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["l" /* Uint */])(8);
-/* harmony export (immutable) */ __webpack_exports__["Uint8"] = Uint8;
-
-const Uint16 = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["l" /* Uint */])(16);
-/* harmony export (immutable) */ __webpack_exports__["Uint16"] = Uint16;
-
-const Uint16LE = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["l" /* Uint */])(16, { little_endian: true });
-/* harmony export (immutable) */ __webpack_exports__["Uint16LE"] = Uint16LE;
-
+const Uint8 = Uint(8);
+const Uint16 = Uint(16);
+const Uint16LE = Uint(16, { little_endian: true });
 const Uint16BE = Uint16;
-/* harmony export (immutable) */ __webpack_exports__["Uint16BE"] = Uint16BE;
-
-const Uint32 = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["l" /* Uint */])(32);
-/* harmony export (immutable) */ __webpack_exports__["Uint32"] = Uint32;
-
-const Uint32LE = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["l" /* Uint */])(32, { little_endian: true });
-/* harmony export (immutable) */ __webpack_exports__["Uint32LE"] = Uint32LE;
-
+const Uint32 = Uint(32);
+const Uint32LE = Uint(32, { little_endian: true });
 const Uint32BE = Uint32;
-/* harmony export (immutable) */ __webpack_exports__["Uint32BE"] = Uint32BE;
-
-const Uint64 = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["l" /* Uint */])(64);
-/* harmony export (immutable) */ __webpack_exports__["Uint64"] = Uint64;
-
-const Uint64LE = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["l" /* Uint */])(64, { little_endian: true });
-/* harmony export (immutable) */ __webpack_exports__["Uint64LE"] = Uint64LE;
-
+const Uint64 = Uint(64);
+const Uint64LE = Uint(64, { little_endian: true });
 const Uint64BE = Uint64;
-/* harmony export (immutable) */ __webpack_exports__["Uint64BE"] = Uint64BE;
-
-const Int8 = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["h" /* Int */])(8);
-/* harmony export (immutable) */ __webpack_exports__["Int8"] = Int8;
-
-const Int16 = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["h" /* Int */])(8);
-/* harmony export (immutable) */ __webpack_exports__["Int16"] = Int16;
-
-const Int16LE = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["h" /* Int */])(16, { little_endian: true });
-/* harmony export (immutable) */ __webpack_exports__["Int16LE"] = Int16LE;
-
+const Int8 = Int(8);
+const Int16 = Int(8);
+const Int16LE = Int(16, { little_endian: true });
 const Int16BE = Int16;
-/* harmony export (immutable) */ __webpack_exports__["Int16BE"] = Int16BE;
-
-const Int32 = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["h" /* Int */])(32);
-/* harmony export (immutable) */ __webpack_exports__["Int32"] = Int32;
-
-const Int32LE = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["h" /* Int */])(32, { little_endian: true });
-/* harmony export (immutable) */ __webpack_exports__["Int32LE"] = Int32LE;
-
+const Int32 = Int(32);
+const Int32LE = Int(32, { little_endian: true });
 const Int32BE = Int32;
-/* harmony export (immutable) */ __webpack_exports__["Int32BE"] = Int32BE;
-
-const Float32 = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["g" /* Float */])(32);
-/* harmony export (immutable) */ __webpack_exports__["Float32"] = Float32;
-
-const Float32LE = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["g" /* Float */])(32, { little_endian: true });
-/* harmony export (immutable) */ __webpack_exports__["Float32LE"] = Float32LE;
-
+const Float32 = Float(32);
+const Float32LE = Float(32, { little_endian: true });
 const Float32BE = Float32;
-/* harmony export (immutable) */ __webpack_exports__["Float32BE"] = Float32BE;
-
-const Float64 = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["g" /* Float */])(64);
-/* harmony export (immutable) */ __webpack_exports__["Float64"] = Float64;
-
-const Float64LE = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["g" /* Float */])(64, { little_endian: true });
-/* harmony export (immutable) */ __webpack_exports__["Float64LE"] = Float64LE;
-
+const Float64 = Float(64);
+const Float64LE = Float(64, { little_endian: true });
 const Float64BE = Float64;
-/* harmony export (immutable) */ __webpack_exports__["Float64BE"] = Float64BE;
-
 /** Noöp structure
  *
  * @type {Struct}
  */
-const Pass = Object(__WEBPACK_IMPORTED_MODULE_1__transcode__["i" /* Padding */])(0);
-/* harmony export (immutable) */ __webpack_exports__["Pass"] = Pass;
+const Pass = Padding(0);
 
-
-
-/***/ })
-/******/ ]);
-//# sourceMappingURL=bundle.js.map
+exports.Uint8 = Uint8;
+exports.Uint16 = Uint16;
+exports.Uint16LE = Uint16LE;
+exports.Uint16BE = Uint16BE;
+exports.Uint32 = Uint32;
+exports.Uint32LE = Uint32LE;
+exports.Uint32BE = Uint32BE;
+exports.Uint64 = Uint64;
+exports.Uint64LE = Uint64LE;
+exports.Uint64BE = Uint64BE;
+exports.Int8 = Int8;
+exports.Int16 = Int16;
+exports.Int16LE = Int16LE;
+exports.Int16BE = Int16BE;
+exports.Int32 = Int32;
+exports.Int32LE = Int32LE;
+exports.Int32BE = Int32BE;
+exports.Float32 = Float32;
+exports.Float32LE = Float32LE;
+exports.Float32BE = Float32BE;
+exports.Float64 = Float64;
+exports.Float64LE = Float64LE;
+exports.Float64BE = Float64BE;
+exports.Pass = Pass;
+exports.hex = hex;
+exports.hex_buffer = hex_buffer;
+exports.inspect = inspect;
+exports.Parent = Parent;
+exports.Bits = Bits;
+exports.Uint = Uint;
+exports.Int = Int;
+exports.Float = Float;
+exports.Utf8 = Utf8;
+exports.Embed = Embed;
+exports.Binary_Array = Binary_Array;
+exports.Binary_Map = Binary_Map;
+exports.Byte_Buffer = Byte_Buffer;
+exports.Repeat = Repeat;
+exports.Branch = Branch;
+exports.Padding = Padding;
+//# sourceMappingURL=cjs-bundle.js.map

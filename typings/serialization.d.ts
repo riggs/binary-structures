@@ -1,5 +1,5 @@
-export declare function hex(value: number): string;
-export declare function hex_buffer(buffer: ArrayBuffer): string;
+export declare const hex: (value: number) => string;
+export declare const hex_buffer: (buffer: ArrayBuffer) => string;
 export declare const Bits_Sizes: number[];
 export declare const Uint_Sizes: number[];
 export declare const Int_Sizes: number[];
