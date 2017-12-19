@@ -66,5 +66,10 @@
   "bugs": {
     "url": "https://github.com/riggs/binary-structures/issues"
   },
-  "homepage": "https://github.com/riggs/binary-structures#readme"
+  "homepage": "https://github.com/riggs/binary-structures#readme",
+  "files": [
+    "src/*.ts",
+    "dist",
+    "typings/*.d.ts"
+  ]
 }
