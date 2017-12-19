@@ -299,29 +299,31 @@ export const Branch = <D, C>({ chooser, choices, default_choice }: Branch<D, C>)
 };
 
 export const Embed = <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<Context_Iterable<D, S>, S> | Struct<D, C>): Struct<Context_Iterable<D, S> | D, C> => {
-    const pack = (source: Fetcher<D>, options: Pack_Options<C> = {}): Packed => {
-        if ( options.context !== undefined ) {
-            const { context } = options;
-            ( options as Pack_Options<S> ).context = context[Parent];
+    const pack = (source: Fetcher<D>, { byte_offset, data_view, little_endian, context }: Pack_Options<C> = {}): Packed => {
+        if ( context !== undefined ) {
+            const parent = context[Parent];
             if ( embedded instanceof Array ) {
-                return ( embedded as Binary_Array<D, Context_Array<D, S>, S> ).pack(context as Context_Array<D, S>, options as Pack_Options<S>, source);
+                return ( embedded as Binary_Array<D, Context_Array<D, S>, S> )
+                    .pack( context as Context_Array<D, S>, { byte_offset, data_view, little_endian, context: parent }, source);
             } else if ( embedded instanceof Map ) {
-                return ( embedded as Binary_Map<D, Context_Map<D, S>, S> ).pack(context as Context_Map<D, S>, options as Pack_Options<S>, context as Context_Map<D, S>);
+                return ( embedded as Binary_Map<D, Context_Map<D, S>, S> )
+                    .pack(context as Context_Map<D, S>, { byte_offset, data_view, little_endian, context: parent }, context as Context_Map<D, S>);
             }
         }
-        return ( embedded as Struct<D, C> ).pack(source, options);
+        return ( embedded as Struct<D, C> ).pack(source, { byte_offset, data_view, little_endian, context });
     };
-    const parse = (data_view: DataView, options: Parse_Options<C> = {}, deliver?: Deliver<D>): Parsed<Context_Iterable<D, S> | D> => {
-        if ( options.context !== undefined ) {
-            const { context } = options;
-            ( options as Pack_Options<S> ).context = context[Parent];
+    const parse = (data_view: DataView, { byte_offset, little_endian, context }: Parse_Options<C> = {}, deliver?: Deliver<D>): Parsed<Context_Iterable<D, S> | D> => {
+        if ( context !== undefined ) {
+            const parent = context[Parent];
             if ( embedded instanceof Array ) {
-                return ( embedded as Binary_Array<D, Context_Array<D, S>, S> ).parse(data_view, options as Parse_Options<S>, undefined, context as Context_Array<D, S>);
+                return ( embedded as Binary_Array<D, Context_Array<D, S>, S> )
+                    .parse(data_view, { byte_offset, little_endian, context: parent }, undefined, context as Context_Array<D, S>);
             } else if ( embedded instanceof Map ) {
-                return ( embedded as Binary_Map<D, Context_Map<D, S>, S> ).parse(data_view, options as Parse_Options<S>, undefined, context as Context_Map<D, S>);
+                return ( embedded as Binary_Map<D, Context_Map<D, S>, S> )
+                    .parse(data_view, { byte_offset, little_endian, context: parent }, undefined, context as Context_Map<D, S>);
             }
         }
-        return ( embedded as Struct<D, C> ).parse(data_view, options, deliver);
+        return ( embedded as Struct<D, C> ).parse(data_view, { byte_offset, little_endian, context }, deliver);
     };
     return { pack, parse }
 };

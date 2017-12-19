@@ -157,31 +157,33 @@ export const Branch = ({ chooser, choices, default_choice }) => {
     return { parse, pack };
 };
 export const Embed = (embedded) => {
-    const pack = (source, options = {}) => {
-        if (options.context !== undefined) {
-            const { context } = options;
-            options.context = context[Parent];
+    const pack = (source, { byte_offset, data_view, little_endian, context } = {}) => {
+        if (context !== undefined) {
+            const parent = context[Parent];
             if (embedded instanceof Array) {
-                return embedded.pack(context, options, source);
+                return embedded
+                    .pack(context, { byte_offset, data_view, little_endian, context: parent }, source);
             }
             else if (embedded instanceof Map) {
-                return embedded.pack(context, options, context);
+                return embedded
+                    .pack(context, { byte_offset, data_view, little_endian, context: parent }, context);
             }
         }
-        return embedded.pack(source, options);
+        return embedded.pack(source, { byte_offset, data_view, little_endian, context });
     };
-    const parse = (data_view, options = {}, deliver) => {
-        if (options.context !== undefined) {
-            const { context } = options;
-            options.context = context[Parent];
+    const parse = (data_view, { byte_offset, little_endian, context } = {}, deliver) => {
+        if (context !== undefined) {
+            const parent = context[Parent];
             if (embedded instanceof Array) {
-                return embedded.parse(data_view, options, undefined, context);
+                return embedded
+                    .parse(data_view, { byte_offset, little_endian, context: parent }, undefined, context);
             }
             else if (embedded instanceof Map) {
-                return embedded.parse(data_view, options, undefined, context);
+                return embedded
+                    .parse(data_view, { byte_offset, little_endian, context: parent }, undefined, context);
             }
         }
-        return embedded.parse(data_view, options, deliver);
+        return embedded.parse(data_view, { byte_offset, little_endian, context }, deliver);
     };
     return { pack, parse };
 };
