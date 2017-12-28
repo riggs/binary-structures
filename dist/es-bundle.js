@@ -365,14 +365,40 @@ const Byte_Buffer = (length, transcoders = {}) => {
     };
     return { pack, parse };
 };
-const Padding = (size) => {
+const Padding = (bytes, transcoders = {}) => {
+    const { encode, decode } = transcoders;
     const pack = (source, options = {}) => {
-        size = numeric(size, options.context);
-        return { size, buffer: options.data_view === undefined ? new ArrayBuffer(Math.ceil(size)) : options.data_view.buffer };
+        let { data_view, byte_offset = 0, context } = options;
+        const size = numeric(bytes, context);
+        if (data_view === undefined) {
+            data_view = new DataView(new ArrayBuffer(Math.ceil(size)));
+        }
+        if (encode !== undefined) {
+            let fill = encode(null, options.context);
+            let i = 0;
+            while (i < Math.floor(size)) {
+                data_view.setUint8(byte_offset + i, fill);
+                fill >>= 8;
+                i++;
+            }
+            const remainder = (size % 1) * 8;
+            if (remainder) {
+                data_view.setUint8(byte_offset + i, fill & (2 ** remainder - 1));
+            }
+        }
+        return { size, buffer: data_view.buffer };
     };
     const parse = (data_view, options = {}, deliver) => {
-        size = numeric(size, options.context);
-        return { size, data: null };
+        const { context } = options;
+        const size = numeric(bytes, context);
+        let data = null;
+        if (decode !== undefined) {
+            data = decode(data, context);
+            if (deliver !== undefined) {
+                deliver(data);
+            }
+        }
+        return { size, data };
     };
     return { pack, parse };
 };

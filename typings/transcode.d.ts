@@ -85,7 +85,7 @@ export declare const Byte_Buffer: <D, C>(length: Numeric<C>, transcoders?: Trans
         size: number;
     };
 };
-export declare const Padding: <C>(size: Numeric<C>) => Struct<any, C>;
+export declare const Padding: <C>(bytes: Numeric<C>, transcoders?: Transcoders<number, any, C>) => Struct<any, C>;
 export declare type Chooser<C> = (context?: C) => number | string;
 export interface Choices<D, C> {
     [choice: number]: Struct<D, C>;

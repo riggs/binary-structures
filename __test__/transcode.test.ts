@@ -213,15 +213,32 @@ describe("Branch", () => {
             expect(() => binary_array.parse(data_view)).toThrow(/Choice 42 not in/);
         });
     });
+    describe("Packing", () => {
+        // TODO
+    });
 });
 describe("Padding", () => {
-    test("parsing", () => {
-        const data_view = new DataView(new Uint8Array([1, 0, 0xAA]).buffer);
-        const binary_array = Binary_Array(Uint(8), Padding({bytes: 1}), Uint(8));
-        expect(binary_array.parse(data_view)).toEqual({data: [1, 0xAA], size: 3});
-        binary_array[1] = Padding({bytes: 1, bits: 4});
-        binary_array[2] = Bits(4);
-        expect(binary_array.parse(data_view)).toEqual({data: [1, 0xA], size: 3});
+    describe("parsing", () => {
+        test("simple case", () => {
+            const data_view = new DataView(new Uint8Array([1, 0, 0xAA]).buffer);
+            const binary_array = Binary_Array(Uint(8), Padding({bytes: 1}), Uint(8));
+            expect(binary_array.parse(data_view)).toEqual({data: [1, 0xAA], size: 3});
+            binary_array[1] = Padding({bytes: 1, bits: 4});
+            binary_array[2] = Bits(4);
+            expect(binary_array.parse(data_view)).toEqual({data: [1, 0xA], size: 3});
+        });
+        test("size function", () => {
+            const data_view = new DataView(new Uint8Array([1, 0, 0xAA, 0xBB]).buffer);
+            const binary_array = Binary_Array(Uint(8), Padding((ctx: Array<number>) => ctx[0]), Uint(8));
+            expect(binary_array.parse(data_view)).toEqual({data: [1, 0xAA], size: 3});
+            data_view.setUint8(0, 2);
+            expect(binary_array.parse(data_view)).toEqual({data: [2, 0xBB], size: 4});
+        });
+        test("decode", () => {
+            const data_view = new DataView(new Uint8Array([12, 0xFF, 0xAF]).buffer);
+            const binary_array = Binary_Array(Uint(8), Padding((ctx: Array<number>) => ctx[0] / 8, {decode: (_, ctx: Array<number>) => `Padding of ${ctx[0]} bits`}), Bits(4));
+            expect(binary_array.parse(data_view)).toEqual({data: [12, 'Padding of 12 bits', 0xA], size: 3})
+        });
     });
     describe("Packing", () => {
         describe("Given DataView", () => {
@@ -230,9 +247,21 @@ describe("Padding", () => {
         describe("Given no DataView", () => {
             test("bytes & bits", () => {
                 const binary_array = Binary_Array(Uint(8), Padding({bytes: 1, bits: 4}), Bits(4), Uint(8));
-                const {size, buffer} = binary_array.pack([1, 0xA, 2], );
+                const {size, buffer} = binary_array.pack([1, 0xA, 2]);
                 expect(size).toEqual(4);
                 expect(Array.from(new Uint8Array(buffer))).toEqual([1, 0, 0xA0, 2]);
+            });
+            test("size function", () => {
+                const binary_array = Binary_Array(Uint(8), Padding((ctx: Array<number>) => ctx[0] / 8), Bits(4));
+                const {size, buffer} = binary_array.pack([12, 0xA]);
+                expect(size).toEqual(3);
+                expect(Array.from(new Uint8Array(buffer))).toEqual([12, 0, 0xA0]);
+            });
+            test("fill value via encode", () => {
+                const binary_array = Binary_Array(Uint(8), Padding(1.5, {encode: () => 0xFFFF}), Bits(4));
+                const {size, buffer} = binary_array.pack([1, 0xA]);
+                expect(size).toEqual(3);
+                expect(Array.from(new Uint8Array(buffer))).toEqual([1, 0xFF, 0xAF]);
             });
         });
     });
