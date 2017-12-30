@@ -1,5 +1,5 @@
 export { hex, hex_buffer } from './serialization';
-export { Encoded, Encoded_Map, Encoded_Array, Context_Array, Context_Map, Encoder, Decoder, inspect, Parent, Bits, Uint, Int, Float, Utf8, Embed, Binary_Array, Binary_Map, Byte_Buffer, Repeat, Branch, Padding, Primitive } from './transcode';
+export { Packed, Parsed, Context, Map_Context, Array_Context, Encoder, Decoder, inspect, Parent, Bits, Uint, Int, Float, Utf8, Embed, Binary_Array, Binary_Map, Byte_Buffer, Repeat, Branch, Padding, Primitive } from './transcode';
 import { Struct } from './transcode';
 export declare const Uint8: Struct<number, any>;
 export declare const Uint16: Struct<number, any>;

@@ -1,10 +1,10 @@
 export {hex, hex_buffer} from './serialization';
 export {
-    Encoded,
-    Encoded_Map,
-    Encoded_Array,
-    Context_Array,
-    Context_Map,
+    Packed,
+    Parsed,
+    Context,
+    Map_Context,
+    Array_Context,
     Encoder,
     Decoder,
     inspect,

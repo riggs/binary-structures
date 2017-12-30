@@ -25,10 +25,14 @@ export type Encoded_Map = Mapped<any>;
 export type Encoded_Array = Array<any>;
 export type Encoded = Primitive | Encoded_Map | Encoded_Array;
 
+export type Map_Context = Encoded_Map;
+export type Array_Context = Encoded_Array;
+export type Context = Encoded;
+
 /* Someday, when Typescript can properly handle Symbol indices on objects, I'll return to this. */
 // export const Parent = Symbol("Parent");
 
-export interface Context<P> {
+export interface Contextualized<P> {
     // [Parent]?: P;
     $parent?: P;
 }
@@ -36,14 +40,14 @@ export interface Context<P> {
 export type Parent = '$parent'
 export const Parent: Parent = '$parent';
 
-const set_context = <E extends Encoded_Map | Encoded_Array, C>(data: E, context?: C): Context_Type<E, C> => {
+const set_context = <E extends (Encoded_Map | Encoded_Array), C>(data: E, context?: C): Context_Type<E, C> => {
     if ( context !== undefined ) {
         ( data as Context_Type<E, C> )[Parent] = context;
     }
     return data as Context_Type<E, C>;
 };
 
-const remove_context = <T extends Encoded_Map | Encoded_Array, C>(data: T, delete_flag: boolean): T => {
+const remove_context = <T extends (Encoded_Map | Encoded_Array), C>(data: T, delete_flag: boolean): T => {
     if ( delete_flag ) {
         delete ( data as Context_Type<T, C> )[Parent];
     }
@@ -51,12 +55,13 @@ const remove_context = <T extends Encoded_Map | Encoded_Array, C>(data: T, delet
 };
 
 /* Context needs to be imposed at the Struct level to support Repeat & Byte_Buffer */
-export type Context_Type<E extends Encoded, C> = E & Context<C>;
+export type Context_Type<E extends Encoded, C> = E & Contextualized<C>;
 
 export type Context_Map<Encoded, Context> = Context_Type<Mapped<Encoded>, Context>;
 
 export type Context_Array<Encoded, Context> = Context_Type<Array<Encoded>, Context>;
 
+/* Used by Embed */
 export type Context_Iterable<Encoded, Context> = Context_Map<Encoded, Context> | Context_Array<Encoded, Context>;
 
 /* These functions provided by library consumer to convert data to usable structures. */

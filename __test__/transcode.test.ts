@@ -1,8 +1,8 @@
 import 'improved-map';
 
 import {
-    Encoded_Map,
-    Encoded_Array,
+    Map_Context,
+    Array_Context,
     Encoder,
     Decoder,
     inspect,
@@ -486,11 +486,11 @@ describe("Embed", () => {
         test("embed branch containing Uint(8) in array and map", () => {
             const data_view = new DataView(new Uint8Array([0, 1]).buffer);
             const binary_array = Binary_Array(Uint(8), Branch({
-                chooser: (ctx: Encoded_Array) => ctx[0],
+                chooser: (ctx: Array_Context) => ctx[0],
                 choices: {0: Uint(8)}
             }));
             const binary_map = Binary_Map({decode}).set('a', Uint(8)).set('embed', Branch({
-                chooser: (ctx: Encoded_Map) => ctx.get('a'),
+                chooser: (ctx: Map_Context) => ctx.get('a'),
                 choices: {0: Uint(8)}
             }));
             expect(binary_array.parse(data_view)).toEqual({data: [0, 1], size: 2});
@@ -499,7 +499,7 @@ describe("Embed", () => {
         test("embed array in branch of array", () => {
             const data_view = new DataView(new Uint8Array([0, 1]).buffer);
             const binary_array = Binary_Array(Uint(8), Branch({
-                chooser: (ctx: Encoded_Array) => ctx[0],
+                chooser: (ctx: Array_Context) => ctx[0],
                 choices: {0: Embed(Binary_Array(Uint(8)))}
             }));
             expect(binary_array.parse(data_view)).toEqual({data: [0, 1], size: 2});
@@ -507,7 +507,7 @@ describe("Embed", () => {
         test("embed map in branch of map", () => {
             const data_view = new DataView(new Uint8Array([0, 1]).buffer);
             const binary_map = Binary_Map({decode}).set('a', Uint(8)).set('embed', Branch({
-                chooser: (ctx: Encoded_Map) => ctx.get('a'),
+                chooser: (ctx: Map_Context) => ctx.get('a'),
                 choices: {0: Embed(Binary_Map().set('b', Uint(8)))}
             }));
             expect(binary_map.parse(data_view)).toEqual({data: {a: 0, b: 1}, size: 2});

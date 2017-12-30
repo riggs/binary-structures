@@ -4,12 +4,15 @@ export declare type Mapped<T> = Map<string, T>;
 export declare type Encoded_Map = Mapped<any>;
 export declare type Encoded_Array = Array<any>;
 export declare type Encoded = Primitive | Encoded_Map | Encoded_Array;
-export interface Context<P> {
+export declare type Map_Context = Encoded_Map;
+export declare type Array_Context = Encoded_Array;
+export declare type Context = Encoded;
+export interface Contextualized<P> {
     $parent?: P;
 }
 export declare type Parent = '$parent';
 export declare const Parent: Parent;
-export declare type Context_Type<E extends Encoded, C> = E & Context<C>;
+export declare type Context_Type<E extends Encoded, C> = E & Contextualized<C>;
 export declare type Context_Map<Encoded, Context> = Context_Type<Mapped<Encoded>, Context>;
 export declare type Context_Array<Encoded, Context> = Context_Type<Array<Encoded>, Context>;
 export declare type Context_Iterable<Encoded, Context> = Context_Map<Encoded, Context> | Context_Array<Encoded, Context>;
