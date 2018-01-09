@@ -74,10 +74,10 @@ export const Uint = factory(uint_pack, uint_parse, (s) => Uint_Sizes.includes(s)
 export const Int = factory(int_pack, int_parse, (s) => Int_Sizes.includes(s));
 export const Float = factory(float_pack, float_parse, (s) => Float_Sizes.includes(s));
 export const Utf8 = factory(utf8_pack, utf8_parse, (s) => s % 8 === 0 && s >= 0);
-const numeric = (n, context) => {
+const numeric = (n, context, type = 'B') => {
     if (typeof n === 'object') {
         let { bits = 0, bytes = 0 } = n;
-        n = bits / 8 + bytes;
+        n = type === 'B' ? bits / 8 + bytes : bits + bytes * 8;
     }
     else if (typeof n === 'function') {
         n = n(context);
@@ -122,32 +122,32 @@ export const Byte_Buffer = (length, transcoders = {}) => {
     };
     return { pack, parse };
 };
-export const Padding = (bytes, transcoders = {}) => {
+export const Padding = (bits, transcoders = {}) => {
     const { encode, decode } = transcoders;
     const pack = (source, options = {}) => {
         let { data_view, byte_offset = 0, context } = options;
-        const size = numeric(bytes, context);
+        const size = numeric(bits, context, 'b');
         if (data_view === undefined) {
-            data_view = new DataView(new ArrayBuffer(Math.ceil(size)));
+            data_view = new DataView(new ArrayBuffer(Math.ceil(size / 8)));
         }
         if (encode !== undefined) {
             let fill = encode(null, options.context);
             let i = 0;
-            while (i < Math.floor(size)) {
+            while (i < Math.floor(size / 8)) {
                 data_view.setUint8(byte_offset + i, fill);
                 fill >>= 8;
                 i++;
             }
-            const remainder = (size % 1) * 8;
+            const remainder = size % 8;
             if (remainder) {
                 data_view.setUint8(byte_offset + i, fill & (2 ** remainder - 1));
             }
         }
-        return { size, buffer: data_view.buffer };
+        return { size: size / 8, buffer: data_view.buffer };
     };
     const parse = (data_view, options = {}, deliver) => {
         const { context } = options;
-        const size = numeric(bytes, context);
+        const size = numeric(bits, context, 'b');
         let data = null;
         if (decode !== undefined) {
             data = decode(data, context);
@@ -155,7 +155,7 @@ export const Padding = (bytes, transcoders = {}) => {
                 deliver(data);
             }
         }
-        return { size, data };
+        return { size: size / 8, data };
     };
     return { pack, parse };
 };
