@@ -1,3 +1,4 @@
+import 'improved-map';
 import { Size } from './serialization';
 export declare type Primitive = number | string | ArrayBuffer;
 export declare type Mapped<T> = Map<string, T>;
@@ -108,7 +109,15 @@ export interface Binary_Map<I, D, C> extends Mapped<Map_Item<I>>, Struct<D, C> {
     pack: (source: D | Fetcher<D>, options?: Pack_Options<C>, encoded?: Context_Map<I, C>) => Packed;
     parse: (data_view: DataView, options?: Parse_Options<C>, deliver?: Deliver<D>, results?: Context_Map<I, C>) => Parsed<D>;
 }
-export declare const Binary_Map: <I, D, C>(transcoders?: Transcoders<Map<string, I>, D, C> | [string, Struct<I, Map<string, I>>][], iterable?: Transcoders<Map<string, I>, D, C> | [string, Struct<I, Map<string, I>>][] | undefined) => Binary_Map<I, D, C>;
+export declare function Binary_Map<I, D, C>(transcoders?: Map_Transcoders<I, D, C> | Map_Iterable<I>, iterable?: Map_Iterable<I> | Map_Transcoders<I, D, C>): Binary_Map<I, D, C>;
+export declare namespace Binary_Map {
+    let object_encoder: (obj: any) => Map<any, any>;
+    let object_decoder: (map: Map<any, any>) => any;
+    let object_transcoders: {
+        encode: (obj: any) => Map<any, any>;
+        decode: (map: Map<any, any>) => any;
+    };
+}
 export declare type Array_Item<I> = Struct<I, Array<I>>;
 export declare type Array_Transcoders<I, D, C> = Transcoders<Array<I>, D, C>;
 export interface Binary_Array<I, D, C> extends Array<Array_Item<I>>, Struct<D, C> {

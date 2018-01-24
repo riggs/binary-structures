@@ -1,3 +1,4 @@
+import 'improved-map';
 import { Bits_Sizes, Uint_Sizes, Int_Sizes, Float_Sizes, uint_pack, int_pack, float_pack, uint_parse, int_parse, float_parse, utf8_pack, utf8_parse } from './serialization';
 export const Parent = '$parent';
 const set_context = (data, context) => {
@@ -213,7 +214,27 @@ export const Embed = (embedded) => {
     };
     return { pack, parse };
 };
-export const Binary_Map = (transcoders = {}, iterable) => {
+const concat_buffers = (packed, byte_length) => {
+    const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
+    let byte_offset = 0;
+    for (const { size, buffer } of packed) {
+        /* Copy all the data from the returned buffers into one grand buffer. */
+        const bytes = Array.from(new Uint8Array(buffer));
+        /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
+        const array = Binary_Array();
+        for (let i = 0; i < Math.floor(size); i++) {
+            array.push(Uint(8));
+        }
+        if (size % 1) {
+            array.push(Bits((size % 1) * 8));
+        }
+        /* Pack the bytes into the buffer */
+        array.pack(bytes, { data_view, byte_offset });
+        byte_offset += size;
+    }
+    return data_view;
+};
+export function Binary_Map(transcoders = {}, iterable) {
     if (transcoders instanceof Array) {
         [transcoders, iterable] = [iterable, transcoders];
     }
@@ -264,27 +285,12 @@ export const Binary_Map = (transcoders = {}, iterable) => {
         return { data, size: offset };
     };
     return map;
-};
-const concat_buffers = (packed, byte_length) => {
-    const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
-    let byte_offset = 0;
-    for (const { size, buffer } of packed) {
-        /* Copy all the data from the returned buffers into one grand buffer. */
-        const bytes = Array.from(new Uint8Array(buffer));
-        /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
-        const array = Binary_Array();
-        for (let i = 0; i < Math.floor(size); i++) {
-            array.push(Uint(8));
-        }
-        if (size % 1) {
-            array.push(Bits((size % 1) * 8));
-        }
-        /* Pack the bytes into the buffer */
-        array.pack(bytes, { data_view, byte_offset });
-        byte_offset += size;
-    }
-    return data_view;
-};
+}
+(function (Binary_Map) {
+    Binary_Map.object_encoder = (obj) => Map.fromObject(obj);
+    Binary_Map.object_decoder = (map) => map.toObject();
+    Binary_Map.object_transcoders = { encode: Binary_Map.object_encoder, decode: Binary_Map.object_decoder };
+})(Binary_Map || (Binary_Map = {}));
 /* This would be much cleaner if JavaScript had interfaces. Or I could make everything subclass Struct... */
 const extract_array_options = (elements = []) => {
     if (elements.length > 0) {

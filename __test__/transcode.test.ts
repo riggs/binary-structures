@@ -393,7 +393,7 @@ describe("Repeat", () => {
 });
 describe("Binary_Map", () => {
     describe("Parsing", () => {
-        const decode = <T>(data: Map<string, T>) => data.toObject();
+        const decode = Binary_Map.object_decoder;
         test("parse a byte", () => {
             const data_view = new DataView(new Uint8Array([42]).buffer);
             const binary_map = Binary_Map({decode}).set('a_byte', Uint(8));
@@ -420,6 +420,15 @@ describe("Binary_Map", () => {
             });
         });
         describe("Given no DataView", () => {
+            test("pack data from an object", () => {
+                const now = Date.now();
+                const lower = now % 2 ** 32;
+                const upper = Math.floor(now / 2 ** 32);
+                const binary_map = Binary_Map(Binary_Map.object_transcoders).set('one', Uint(8)).set('now', Uint(64, {little_endian: true}));
+                const {size, buffer} = binary_map.pack({one: 1, now: now});
+                expect(size).toEqual(9);
+                expect(Array.from(new Uint8Array(buffer))).toEqual([1, ...new Uint8Array(new Uint32Array([lower, upper]).buffer)]);
+            });
             // TODO
         });
     });

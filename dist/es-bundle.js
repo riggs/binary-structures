@@ -1,3 +1,5 @@
+import 'improved-map';
+
 const hex = (value) => {
     return "0x" + value.toString(16).toUpperCase().padStart(2, "0");
 };
@@ -456,7 +458,27 @@ const Embed = (embedded) => {
     };
     return { pack, parse };
 };
-const Binary_Map = (transcoders = {}, iterable) => {
+const concat_buffers = (packed, byte_length) => {
+    const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
+    let byte_offset = 0;
+    for (const { size, buffer } of packed) {
+        /* Copy all the data from the returned buffers into one grand buffer. */
+        const bytes = Array.from(new Uint8Array(buffer));
+        /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
+        const array = Binary_Array();
+        for (let i = 0; i < Math.floor(size); i++) {
+            array.push(Uint(8));
+        }
+        if (size % 1) {
+            array.push(Bits((size % 1) * 8));
+        }
+        /* Pack the bytes into the buffer */
+        array.pack(bytes, { data_view, byte_offset });
+        byte_offset += size;
+    }
+    return data_view;
+};
+function Binary_Map(transcoders = {}, iterable) {
     if (transcoders instanceof Array) {
         [transcoders, iterable] = [iterable, transcoders];
     }
@@ -507,27 +529,12 @@ const Binary_Map = (transcoders = {}, iterable) => {
         return { data, size: offset };
     };
     return map;
-};
-const concat_buffers = (packed, byte_length) => {
-    const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
-    let byte_offset = 0;
-    for (const { size, buffer } of packed) {
-        /* Copy all the data from the returned buffers into one grand buffer. */
-        const bytes = Array.from(new Uint8Array(buffer));
-        /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
-        const array = Binary_Array();
-        for (let i = 0; i < Math.floor(size); i++) {
-            array.push(Uint(8));
-        }
-        if (size % 1) {
-            array.push(Bits((size % 1) * 8));
-        }
-        /* Pack the bytes into the buffer */
-        array.pack(bytes, { data_view, byte_offset });
-        byte_offset += size;
-    }
-    return data_view;
-};
+}
+(function (Binary_Map) {
+    Binary_Map.object_encoder = (obj) => Map.fromObject(obj);
+    Binary_Map.object_decoder = (map) => map.toObject();
+    Binary_Map.object_transcoders = { encode: Binary_Map.object_encoder, decode: Binary_Map.object_decoder };
+})(Binary_Map || (Binary_Map = {}));
 /* This would be much cleaner if JavaScript had interfaces. Or I could make everything subclass Struct... */
 const extract_array_options = (elements = []) => {
     if (elements.length > 0) {

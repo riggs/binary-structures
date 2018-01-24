@@ -21,10 +21,11 @@
   "directories": {
     "test": "__test__"
   },
-  "dependencies": {},
+  "dependencies": {
+    "improved-map": "^1.2.1"
+  },
   "devDependencies": {
     "@types/jest": "^21.1.10",
-    "improved-map": "^1.1.0",
     "jest": "^21.2.1",
     "rollup": "^0.52.3",
     "text-encoding": "^0.6.4",

@@ -1,3 +1,5 @@
+import 'improved-map';
+
 import {
     Bits_Sizes,
     Uint_Sizes,
@@ -359,6 +361,27 @@ export const Embed = <D, C extends Context_Iterable<D, S>, S>(embedded: Struct<C
     return { pack, parse }
 };
 
+const concat_buffers = (packed: Packed[], byte_length: number) => {
+    const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
+    let byte_offset = 0;
+    for ( const { size, buffer } of packed ) {
+        /* Copy all the data from the returned buffers into one grand buffer. */
+        const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer));
+        /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
+        const array = Binary_Array();
+        for ( let i = 0; i < Math.floor(size); i++ ) {
+            array.push(Uint(8));
+        }
+        if ( size % 1 ) {
+            array.push(Bits(( size % 1 ) * 8));
+        }
+        /* Pack the bytes into the buffer */
+        array.pack(bytes, { data_view, byte_offset });
+        byte_offset += size;
+    }
+    return data_view;
+};
+
 export type Map_Item<I> = Struct<I, Mapped<I>>;
 export type Map_Iterable<I> = Array<[string, Map_Item<I>]>;
 export type Map_Transcoders<I, D, C> = Transcoders<Mapped<I>, D, C>;
@@ -368,7 +391,7 @@ export interface Binary_Map<I, D, C> extends Mapped<Map_Item<I>>, Struct<D, C> {
     parse: (data_view: DataView, options?: Parse_Options<C>, deliver?: Deliver<D>, results?: Context_Map<I, C>) => Parsed<D>;
 }
 
-export const Binary_Map = <I, D, C>(transcoders: Map_Transcoders<I, D, C> | Map_Iterable<I> = {}, iterable?: Map_Iterable<I> | Map_Transcoders<I, D, C>): Binary_Map<I, D, C> => {
+export function Binary_Map<I, D, C>(transcoders: Map_Transcoders<I, D, C> | Map_Iterable<I> = {}, iterable?: Map_Iterable<I> | Map_Transcoders<I, D, C>) {
     if ( transcoders instanceof Array ) {
         [transcoders, iterable] = [iterable as Map_Transcoders<I, D, C>, transcoders as Map_Iterable<I>];
     }
@@ -423,28 +446,13 @@ export const Binary_Map = <I, D, C>(transcoders: Map_Transcoders<I, D, C> | Map_
     };
 
     return map;
-};
+}
 
-const concat_buffers = (packed: Packed[], byte_length: number) => {
-    const data_view = new DataView(new ArrayBuffer(Math.ceil(byte_length)));
-    let byte_offset = 0;
-    for ( const { size, buffer } of packed ) {
-        /* Copy all the data from the returned buffers into one grand buffer. */
-        const bytes = Array.from(new Uint8Array(buffer as ArrayBuffer));
-        /* Create a Byte Array with the appropriate number of Uint(8)s, possibly with a trailing Bits. */
-        const array = Binary_Array();
-        for ( let i = 0; i < Math.floor(size); i++ ) {
-            array.push(Uint(8));
-        }
-        if ( size % 1 ) {
-            array.push(Bits(( size % 1 ) * 8));
-        }
-        /* Pack the bytes into the buffer */
-        array.pack(bytes, { data_view, byte_offset });
-        byte_offset += size;
-    }
-    return data_view;
-};
+export namespace Binary_Map {
+    export let object_encoder = (obj: any) => Map.fromObject(obj);
+    export let object_decoder = (map: Map<any, any>) => map.toObject();
+    export let object_transcoders = {encode: Binary_Map.object_encoder, decode: Binary_Map.object_decoder};
+}
 
 /* This would be much cleaner if JavaScript had interfaces. Or I could make everything subclass Struct... */
 const extract_array_options = <Items, Transcoders>(elements: Array<Items | Transcoders> = []) => {
