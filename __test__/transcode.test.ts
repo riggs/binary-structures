@@ -231,8 +231,10 @@ describe("Padding", () => {
             const data_view = new DataView(new Uint8Array([8, 0, 0xAA, 0xBB]).buffer);
             const binary_array = Binary_Array(Uint(8), Padding((ctx: Array<number>) => ctx[0]), Uint(8));
             expect(binary_array.parse(data_view)).toEqual({data: [8, 0xAA], size: 3});
-            data_view.setUint8(0, 16);
-            expect(binary_array.parse(data_view)).toEqual({data: [16, 0xBB], size: 4});
+            data_view.setUint8(0, 12);
+            expect(binary_array.parse(data_view)).toEqual({data: [12, 0xBA], size: 3.5});
+            data_view.setUint8(0, 0);
+            expect(binary_array.parse(data_view)).toEqual({data: [0, 0], size: 2});
         });
         test("decode", () => {
             const data_view = new DataView(new Uint8Array([12, 0xFF, 0xAF]).buffer);
@@ -262,6 +264,12 @@ describe("Padding", () => {
                 const {size, buffer} = binary_array.pack([1, 0xA]);
                 expect(size).toEqual(3);
                 expect(Array.from(new Uint8Array(buffer))).toEqual([1, 0xFF, 0xAF]);
+            });
+            test("size of zero", () => {
+                const binary_array = Binary_Array(Padding(0));
+                const {size, buffer} = binary_array.pack([]);
+                expect(size).toEqual(0);
+                expect(buffer.byteLength).toEqual(0);
             });
         });
     });
