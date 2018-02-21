@@ -482,7 +482,7 @@ const concat_buffers = (packed, byte_length) => {
     }
     return data_view;
 };
-function exports.Binary_Map(transcoders = {}, iterable) {
+function Binary_Map(transcoders = {}, iterable) {
     if (transcoders instanceof Array) {
         [transcoders, iterable] = [iterable, transcoders];
     }
@@ -538,7 +538,7 @@ function exports.Binary_Map(transcoders = {}, iterable) {
     Binary_Map.object_encoder = (obj) => Map.fromObject(obj);
     Binary_Map.object_decoder = (map) => map.toObject();
     Binary_Map.object_transcoders = { encode: Binary_Map.object_encoder, decode: Binary_Map.object_decoder };
-})(exports.Binary_Map || (exports.Binary_Map = {}));
+})(Binary_Map || (Binary_Map = {}));
 /* This would be much cleaner if JavaScript had interfaces. Or I could make everything subclass Struct... */
 const extract_array_options = (elements = []) => {
     if (elements.length > 0) {
@@ -728,6 +728,7 @@ exports.Float = Float;
 exports.Utf8 = Utf8;
 exports.Embed = Embed;
 exports.Binary_Array = Binary_Array;
+exports.Binary_Map = Binary_Map;
 exports.Byte_Buffer = Byte_Buffer;
 exports.Repeat = Repeat;
 exports.Branch = Branch;
