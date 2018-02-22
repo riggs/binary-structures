@@ -31,16 +31,11 @@ export type Map_Context = Encoded_Map;
 export type Array_Context = Encoded_Array;
 export type Context = Encoded;
 
-/* Someday, when Typescript can properly handle Symbol indices on objects, I'll return to this. */
-// export const Parent = Symbol("Parent");
+export const Parent = Symbol("Parent");
 
 export interface Contextualized<P> {
-    // [Parent]?: P;
-    $parent?: P;
+    [Parent]?: P;
 }
-
-export type Parent = '$parent'
-export const Parent: Parent = '$parent';
 
 const set_context = <E extends (Encoded_Map | Encoded_Array), C>(data: E, context?: C): Context_Type<E, C> => {
     if ( context !== undefined ) {

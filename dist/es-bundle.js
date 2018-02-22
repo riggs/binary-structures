@@ -244,7 +244,7 @@ const utf8_parse = ({ bits, data_view, byte_offset = 0 }) => {
     }
 };
 
-const Parent = '$parent';
+const Parent = Symbol("Parent");
 const set_context = (data, context) => {
     if (context !== undefined) {
         data[Parent] = context;

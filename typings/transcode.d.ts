@@ -8,11 +8,10 @@ export declare type Encoded = Primitive | Encoded_Map | Encoded_Array;
 export declare type Map_Context = Encoded_Map;
 export declare type Array_Context = Encoded_Array;
 export declare type Context = Encoded;
+export declare const Parent: unique symbol;
 export interface Contextualized<P> {
-    $parent?: P;
+    [Parent]?: P;
 }
-export declare type Parent = '$parent';
-export declare const Parent: Parent;
 export declare type Context_Type<E extends Encoded, C> = E & Contextualized<C>;
 export declare type Context_Map<Encoded, Context> = Context_Type<Mapped<Encoded>, Context>;
 export declare type Context_Array<Encoded, Context> = Context_Type<Array<Encoded>, Context>;

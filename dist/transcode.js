@@ -1,6 +1,6 @@
 import 'improved-map';
 import { Bits_Sizes, Uint_Sizes, Int_Sizes, Float_Sizes, uint_pack, int_pack, float_pack, uint_parse, int_parse, float_parse, utf8_pack, utf8_parse } from './serialization';
-export const Parent = '$parent';
+export const Parent = Symbol("Parent");
 const set_context = (data, context) => {
     if (context !== undefined) {
         data[Parent] = context;
