@@ -66,10 +66,10 @@ export interface Struct<Decoded, Context> {
     pack: Packer<Decoded, Context>;
     parse: Parser<Decoded, Context>;
 }
-export declare const Bits: <D, C>(bits: number, transcoders?: Transcoders<number, D, C>) => Struct<D, C>;
-export declare const Uint: <D, C>(bits: number, transcoders?: Transcoders<number, D, C>) => Struct<D, C>;
-export declare const Int: <D, C>(bits: number, transcoders?: Transcoders<number, D, C>) => Struct<D, C>;
-export declare const Float: <D, C>(bits: number, transcoders?: Transcoders<number, D, C>) => Struct<D, C>;
+export declare const Bits: <D, C>(bits: number, transcoders?: Transcoders<string | number, D, C>) => Struct<D, C>;
+export declare const Uint: <D, C>(bits: number, transcoders?: Transcoders<string | number, D, C>) => Struct<D, C>;
+export declare const Int: <D, C>(bits: number, transcoders?: Transcoders<string | number, D, C>) => Struct<D, C>;
+export declare const Float: <D, C>(bits: number, transcoders?: Transcoders<string | number, D, C>) => Struct<D, C>;
 export declare const Utf8: <D, C>(bits: number, transcoders?: Transcoders<string, D, C>) => Struct<D, C>;
 export declare type Numeric<C> = number | {
     bits?: number;

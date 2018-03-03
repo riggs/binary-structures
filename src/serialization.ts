@@ -26,6 +26,8 @@ export interface Serialization_Options {
     little_endian?: boolean;
 }
 
+export type Numeric = number | string;
+
 export interface Serializer<T> {
     (value: T, options: Serialization_Options): Size;
 }
@@ -76,14 +78,13 @@ const read_bit_shift: (<T>(parser: Deserializer<T>, options: Serialization_Optio
         return parser({ bits, byte_offset: 0, data_view: new DataView(bytes.buffer), little_endian });
     };
 
-export const uint_pack: Serializer<number> = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
-    const original_value = value;
-    value = Math.floor(original_value);
-    if ( value < 0 || value > 2 ** bits || original_value !== value || value > Number.MAX_SAFE_INTEGER ) {
-        throw new Error(`Unable to encode ${original_value} to Uint${bits}`)
+export const uint_pack: Serializer<Numeric> = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
+    const numeric = Number(value);
+    if ( numeric < 0 || numeric > 2 ** bits || !Number.isSafeInteger(numeric) ) {
+        throw new Error(`Unable to encode ${value} to Uint${bits}`)
     }
     if ( byte_offset % 1 ) {
-        return write_bit_shift(uint_pack, value, { bits, data_view, byte_offset, little_endian });
+        return write_bit_shift(uint_pack, numeric, { bits, data_view, byte_offset, little_endian });
     } else {
         switch ( bits ) {
             case 1:
@@ -94,17 +95,17 @@ export const uint_pack: Serializer<number> = (value, { bits, data_view, byte_off
             case 6:
             case 7:
             case 8:
-                data_view.setUint8(byte_offset, value);
+                data_view.setUint8(byte_offset, numeric);
                 break;
             case 16:
-                data_view.setUint16(byte_offset, value, little_endian);
+                data_view.setUint16(byte_offset, numeric, little_endian);
                 break;
             case 32:
-                data_view.setUint32(byte_offset, value, little_endian);
+                data_view.setUint32(byte_offset, numeric, little_endian);
                 break;
             case 64:    /* Special case to handle millisecond epoc time (from Date.now()) */
-                const upper = Math.floor(value / 2 ** 32);
-                const lower = value % 2 ** 32;
+                const upper = Math.floor(numeric / 2 ** 32);
+                const lower = numeric % 2 ** 32;
                 let low_byte: number;
                 let high_byte: number;
                 if ( little_endian ) {
@@ -160,24 +161,23 @@ export const uint_parse: Deserializer<number> = ({ bits, data_view, byte_offset 
     }
 };
 
-export const int_pack: Serializer<number> = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
-    const original_value = value;
-    value = Math.floor(original_value);
-    if ( value < -( 2 ** ( bits - 1 )) || value > 2 ** ( bits - 1 ) - 1 || original_value !== value ) {
-        throw new Error(`Unable to encode ${original_value} to Int${bits}`)
+export const int_pack: Serializer<Numeric> = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
+    const numeric = Number(value);
+    if ( numeric < -( 2 ** ( bits - 1 )) || numeric > 2 ** ( bits - 1 ) - 1 || !Number.isSafeInteger(numeric) ) {
+        throw new Error(`Unable to encode ${value} to Int${bits}`)
     }
     if ( byte_offset % 1 ) {
-        return write_bit_shift(int_pack, value, { bits, data_view, byte_offset, little_endian });
+        return write_bit_shift(int_pack, numeric, { bits, data_view, byte_offset, little_endian });
     } else {
         switch ( bits ) {
             case 8:
-                data_view.setUint8(byte_offset, value);
+                data_view.setUint8(byte_offset, numeric);
                 break;
             case 16:
-                data_view.setUint16(byte_offset, value, little_endian);
+                data_view.setUint16(byte_offset, numeric, little_endian);
                 break;
             case 32:
-                data_view.setUint32(byte_offset, value, little_endian);
+                data_view.setUint32(byte_offset, numeric, little_endian);
                 break;
             default:
                 throw new Error(`Invalid size: ${bits}`);
@@ -203,17 +203,21 @@ export const int_parse: Deserializer<number> = ({ bits, data_view, byte_offset =
     }
 };
 
-export const float_pack: Serializer<number> = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
-    /* TODO: Input validation */
+export const float_pack: Serializer<Numeric> = (value, { bits, data_view, byte_offset = 0, little_endian }) => {
+    const numeric = Number(value);
+    /* TODO: Input validation; NaN is a valid Float */
+    // if ( !Number.isFinite(numeric) ) {
+    //     throw new Error(`Unable to encode ${value} to Float${bits}`)
+    // }
     if ( byte_offset % 1 ) {
-        return write_bit_shift(float_pack, value, { bits, data_view, byte_offset, little_endian });
+        return write_bit_shift(float_pack, numeric, { bits, data_view, byte_offset, little_endian });
     } else {
         switch ( bits ) {
             case 32:
-                data_view.setFloat32(byte_offset, value, little_endian);
+                data_view.setFloat32(byte_offset, numeric, little_endian);
                 break;
             case 64:
-                data_view.setFloat64(byte_offset, value, little_endian);
+                data_view.setFloat64(byte_offset, numeric, little_endian);
                 break;
             default:
                 throw new Error(`Invalid size: ${bits}`);

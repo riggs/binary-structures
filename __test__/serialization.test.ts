@@ -67,6 +67,13 @@ describe("uint_pack function", () => {
         expect(bit_length).toEqual(16);
         expect(Array.from(new Uint8Array(buffer))).toEqual([0b00101011, 0b11000011, 0b11000000].reverse());
     });
+    test("pack a uint32 from a numeric string", () => {
+        const buffer = new ArrayBuffer(4);
+        const data_view = new DataView(buffer);
+        const bit_length = uint_pack("2.3e4", {bits: 32, byte_offset: 0, data_view, little_endian: true});
+        expect(bit_length).toEqual(32);
+        expect(data_view.getUint32(0, true)).toEqual(23000);
+    });
     test("pack a byte with a negative value throws an error", () => {
         expect(() => {uint_pack(-1, {bits: 8, byte_offset: 0, data_view: new DataView(new ArrayBuffer(1))})})
             .toThrow(/Unable to encode/);
@@ -91,26 +98,33 @@ describe("int_pack function", () => {
         expect(bit_length).toEqual(8);
         expect(Array.from(bytes)).toEqual([0, 1, -42, 3]);
     });
-    test("pack a uint16 little endian", () => {
+    test("pack an int16 little endian", () => {
         const buffer = new ArrayBuffer(2);
         const data_view = new DataView(buffer);
-        const bit_length = int_pack(0b0001111111000000, {bits: 16, byte_offset: 0, data_view: data_view, little_endian: true});
+        const bit_length = int_pack(-8128, {bits: 16, byte_offset: 0, data_view: data_view, little_endian: true});
         expect(bit_length).toEqual(16);
-        expect(data_view.getUint16(0, true)).toEqual(8128);
+        expect(data_view.getInt16(0, true)).toEqual(-8128);
     });
-    test("pack a uint32 big endian", () => {
+    test("pack an int32 big endian", () => {
         const buffer = new ArrayBuffer(4);
         const data_view = new DataView(buffer);
         const bit_length = int_pack(0b00000001111111111111000000000000, {bits: 32, byte_offset: 0, data_view: data_view, little_endian: undefined});
         expect(bit_length).toEqual(32);
-        expect(data_view.getUint32(0)).toEqual(33550336);
+        expect(data_view.getInt32(0)).toEqual(33550336);
     });
-    test("pack a uint16 little endian with a bit offset", () => {
+    test("pack an int16 little endian with a bit offset", () => {
         const buffer = new ArrayBuffer(2+1);
         const data_view = new DataView(buffer);
         const bit_length = int_pack(0x5F0F, {bits: 16, byte_offset: 6/8, data_view: data_view, little_endian: true});
         expect(bit_length).toEqual(16);
         expect(Array.from(new Uint8Array(buffer))).toEqual([0b00010111, 0b11000011, 0b11000000].reverse());
+    });
+    test("pack an int32 from a numeric string", () => {
+        const buffer = new ArrayBuffer(4);
+        const data_view = new DataView(buffer);
+        const bit_length = int_pack("-2.3e4", {bits: 32, byte_offset: 0, data_view, little_endian: true});
+        expect(bit_length).toEqual(32);
+        expect(data_view.getInt32(0, true)).toEqual(-23000);
     });
     test("pack a byte with too large of a negative value throws an error", () => {
         expect(() => {int_pack(-129, {bits: 8, byte_offset: 0, data_view: new DataView(new ArrayBuffer(1))})})
@@ -153,6 +167,13 @@ describe("float_pack function", () => {
         tmp_view.setUint8(4, Math.floor(tmp_value * 2**bit_offset / 2**32));
         tmp_view.setUint32(0, (tmp_value * 2**bit_offset) % 2**32, true);
         expect(Array.from(new Uint8Array(buffer))).toEqual(Array.from(new Uint8Array(tmp_buffer)));
+    });
+    test("pack a float32 from a numeric string", () => {
+        const buffer = new ArrayBuffer(4);
+        const data_view = new DataView(buffer);
+        const bit_length = float_pack("-2.3e-4", {bits: 32, byte_offset: 0, data_view, little_endian: true});
+        expect(bit_length).toEqual(32);
+        expect(data_view.getFloat32(0, true)).toBeCloseTo(-2.3e-4);
     });
 });
 describe("uint_parse function", () => {
