@@ -75,7 +75,7 @@ export const uint_pack = (value, { bits, data_view, byte_offset = 0, little_endi
             case 32:
                 data_view.setUint32(byte_offset, numeric, little_endian);
                 break;
-            case 64:/* Special case to handle millisecond epoc time (from Date.now()) */ 
+            case 64: /* Special case to handle millisecond epoc time (from Date.now()) */
                 const upper = Math.floor(numeric / 2 ** 32);
                 const lower = numeric % 2 ** 32;
                 let low_byte;
@@ -117,7 +117,7 @@ export const uint_parse = ({ bits, data_view, byte_offset = 0, little_endian }) 
                 return data_view.getUint16(byte_offset, little_endian);
             case 32:
                 return data_view.getUint32(byte_offset, little_endian);
-            case 64:/* Special case to handle millisecond epoc time (from Date.now()) */ 
+            case 64: /* Special case to handle millisecond epoc time (from Date.now()) */
                 const low_byte = data_view.getUint32(byte_offset, little_endian);
                 const high_byte = data_view.getUint32(byte_offset + 4, little_endian);
                 let value;
